@@ -1,0 +1,9 @@
+{"type": "vol_target", "annual_vol": 0.25,
+ "strategy": {"type": "combine", "multiplier": 1.2,
+   "strategies": [
+     {"type": "ewmac", "fast": 8, "slow": 32},
+     {"type": "ewmac", "fast": 16, "slow": 64},
+     {"type": "ewmac", "fast": 32, "slow": 128},
+     {"type": "carver_breakout", "lookback": 40},
+     {"type": "carver_breakout", "lookback": 80},
+     {"type": "carver_breakout", "lookback": 160}]}}

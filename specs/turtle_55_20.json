@@ -1,0 +1,2 @@
+{"type": "vol_target", "annual_vol": 0.25,
+ "strategy": {"type": "donchian_breakout", "entry": 55, "exit": 20}}

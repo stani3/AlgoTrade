@@ -1,0 +1,2 @@
+{"type": "rsi_reversion", "length": 2, "lower": 10, "upper": 90, "exit_level": 50,
+ "trend_filter": 200, "allow_short": false}
