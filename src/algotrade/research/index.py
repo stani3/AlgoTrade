@@ -82,12 +82,13 @@ def write_index(ws: Workspace) -> Path:
             "their fingerprints block near-copies, but they never passed or failed a gate, so",
             "registering one of them as an idea is allowed.",
             "",
-            "| Rule | Timeframes |",
+            "| Rule | Variants screened |",
             "|---|---|",
         ]
-        for label, group in screened.groupby("label"):
-            timeframes = ", ".join(sorted(group["timeframe"].unique()))
-            lines.append(f"| {_cell(label)} | {timeframes} |")
+        rules = screened["label"].str.split(" (", n=1, regex=False).str[0]
+        for rule, group in screened.groupby(rules):
+            variants = sorted({label[len(rule) :].strip(" ()") for label in group["label"]})
+            lines.append(f"| {_cell(rule)} | {'; '.join(variants)} |")
 
     used: dict[str, list[str]] = {}
     for entry in journal.entries():

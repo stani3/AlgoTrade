@@ -81,7 +81,8 @@ def test_seed_counts_trials_and_writes_the_index(seeded) -> None:
     assert (trials["window"].str.contains("holdout included")).all()
     index = ws.index_path.read_text(encoding="utf-8")
     assert "Book breakout + RSI + ATR bracket (pre-journal)" in index
-    assert "## Screened before the journal" in index and "| ewmac (1d) | 1d |" in index
+    assert "## Screened before the journal" in index
+    assert "| ewmac | 1d; 4h, vol target 25% |" in index
     assert "Configurations evaluated so far: **15**" in index
 
 

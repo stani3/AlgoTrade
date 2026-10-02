@@ -16,62 +16,26 @@ Catalogue rules run by `scripts.scan` on the full history. They count as trials 
 their fingerprints block near-copies, but they never passed or failed a gate, so
 registering one of them as an idea is allowed.
 
-| Rule | Timeframes |
+| Rule | Variants screened |
 |---|---|
-| adx_trend (1d) | 1d |
-| adx_trend (1d, vol target 25%) | 1d |
-| adx_trend (4h, vol target 25%) | 4h |
-| bollinger_breakout (1d) | 1d |
-| bollinger_breakout (1d, vol target 25%) | 1d |
-| bollinger_breakout (4h, vol target 25%) | 4h |
-| bollinger_reversion (1d) | 1d |
-| bollinger_reversion (1d, vol target 25%) | 1d |
-| bollinger_reversion (4h, vol target 25%) | 4h |
-| carver_breakout (1d) | 1d |
-| carver_breakout (1d, vol target 25%) | 1d |
-| carver_breakout (4h, vol target 25%) | 4h |
-| donchian_breakout (1d) | 1d |
-| donchian_breakout (1d, vol target 25%) | 1d |
-| donchian_breakout (4h, vol target 25%) | 4h |
-| ewmac (1d) | 1d |
-| ewmac (1d, vol target 25%) | 1d |
-| ewmac (4h, vol target 25%) | 4h |
-| funding_carry (1d) | 1d |
-| funding_carry (1d, vol target 25%) | 1d |
-| funding_carry (4h, vol target 25%) | 4h |
-| keltner_breakout (1d) | 1d |
-| keltner_breakout (1d, vol target 25%) | 1d |
-| keltner_breakout (4h, vol target 25%) | 4h |
-| ma_crossover (1d) | 1d |
-| ma_crossover (1d, vol target 25%) | 1d |
-| ma_crossover (4h, vol target 25%) | 4h |
-| macd (1d) | 1d |
-| macd (1d, vol target 25%) | 1d |
-| macd (4h, vol target 25%) | 4h |
-| momentum (1d) | 1d |
-| momentum (1d, vol target 25%) | 1d |
-| momentum (4h, vol target 25%) | 4h |
-| parabolic_sar (1d) | 1d |
-| parabolic_sar (1d, vol target 25%) | 1d |
-| parabolic_sar (4h, vol target 25%) | 4h |
-| rsi_reversion (1d) | 1d |
-| rsi_reversion (1d, vol target 25%) | 1d |
-| rsi_reversion (4h, vol target 25%) | 4h |
-| spec:carver_trend (1d) | 1d |
-| spec:carver_trend (1d, vol target 25%) | 1d |
-| spec:carver_trend (4h, vol target 25%) | 4h |
-| spec:carver_trend_carry (1d) | 1d |
-| spec:carver_trend_carry (1d, vol target 25%) | 1d |
-| spec:carver_trend_carry (4h, vol target 25%) | 4h |
-| spec:connors_rsi2 (1d) | 1d |
-| spec:connors_rsi2 (1d, vol target 25%) | 1d |
-| spec:connors_rsi2 (4h, vol target 25%) | 4h |
-| spec:turtle_55_20 (1d) | 1d |
-| spec:turtle_55_20 (1d, vol target 25%) | 1d |
-| spec:turtle_55_20 (4h, vol target 25%) | 4h |
-| supertrend (1d) | 1d |
-| supertrend (1d, vol target 25%) | 1d |
-| supertrend (4h, vol target 25%) | 4h |
+| adx_trend | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| bollinger_breakout | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| bollinger_reversion | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| carver_breakout | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| donchian_breakout | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| ewmac | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| funding_carry | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| keltner_breakout | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| ma_crossover | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| macd | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| momentum | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| parabolic_sar | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| rsi_reversion | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| spec:carver_trend | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| spec:carver_trend_carry | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| spec:connors_rsi2 | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| spec:turtle_55_20 | 1d; 1d, vol target 25%; 4h, vol target 25% |
+| supertrend | 1d; 1d, vol target 25%; 4h, vol target 25% |
 
 ## Sources already used
 
