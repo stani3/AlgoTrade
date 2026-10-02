@@ -7,7 +7,7 @@ from bracket_helpers import bars_from, random_bars
 from conftest import make_bars
 
 from algotrade.backtest.bracket import BracketSignals, simulate_bracket
-from algotrade.backtest.costs import CostModel
+from algotrade.backtest.costs import ZERO_COSTS, CostModel
 from algotrade.backtest.engine import run_backtest
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.backtest.runner import backtest
@@ -148,6 +148,27 @@ def test_entry_test_scoring_decides_profitable(scoring) -> None:
     column = "fixed_return" if scoring == "fixed" else "net_return"
     assert table["profitable"].equals((table[column] > 0) & (table["trades"] > 0))
     assert (table["fixed_return"] != table["net_return"]).any()
+
+
+def test_fixed_scoring_counts_every_trade_after_a_wipe_out() -> None:
+    # A 1x short from 160 to 400 loses 150%: the compounded account is gone after the first
+    # trade, while the fixed-size count records that loss and the three flat trades after it.
+    close = np.concatenate([np.linspace(100, 400, 6), np.full(30, 400.0)])
+    index = pd.date_range("2024-01-01", periods=len(close), freq="D", tz="UTC")
+    bars = pd.DataFrame({"open": close, "high": close, "low": close, "close": close}, index=index)
+
+    @dataclass(frozen=True)
+    class ShortEvery8(Strategy):
+        name = "test_short_every_8"
+
+        def target_position(self, bars):
+            return pd.Series(np.where(np.arange(len(bars)) % 8 == 0, -1.0, 0.0), index=bars.index)
+
+    test = run_entry_test(ShortEvery8(), {"X": bars}, ZERO_COSTS, [5], 2.0, 4.0, 14, "fixed")
+    row = test.table.set_index("exit").loc["5 bars"]
+    assert row["trades"] == 4 and row["win_rate"] == 0.0
+    assert row["fixed_return"] == pytest.approx(-1.5)
+    assert row["net_return"] <= -1.0 and not row["profitable"]
 
 
 def test_entry_test_rejects_unknown_scoring() -> None:

@@ -159,7 +159,9 @@ Strategies are developed the way Davey describes: idea, limited feasibility test
 then incubation. The work is split into Claude Code skills (`.claude/skills/`) for the parts
 that need judgement, and deterministic gates in `src/algotrade/research/` (CLI:
 `scripts/research.py`) that decide PASS/FAIL against thresholds fixed in advance in
-`research/criteria.yaml`.
+`research/criteria.yaml`. That file is yours: `.claude/settings.json` makes Claude ask before
+every edit of it, Claude changes it only when you ask for a specific change, and the pipeline
+stages never touch it.
 
 | Skill | Does |
 |---|---|

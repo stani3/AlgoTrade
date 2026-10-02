@@ -53,6 +53,8 @@ def test_instruments_bar_types_and_keys(monkeypatch) -> None:
     assert str(live_node.instrument_id("bybit", "BTC", "USDC")) == "BTCUSDC-LINEAR.BYBIT"
     kind = live_node.bar_type(live_node.instrument_id("bybit", "ETH"), "1d")
     assert str(kind) == "ETHUSDT-LINEAR.BYBIT-1-DAY-LAST-EXTERNAL"
+    hourly = live_node.bar_type(live_node.instrument_id("binance", "BTC"), "1h")
+    assert str(hourly) == "BTCUSDT-PERP.BINANCE-1-HOUR-LAST-EXTERNAL"
     monkeypatch.setenv("BYBIT_TESTNET_API_KEY", "placeholder")
     assert live_node.missing_keys("bybit") == ["BYBIT_TESTNET_API_SECRET"]
 

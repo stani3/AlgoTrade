@@ -71,6 +71,16 @@ def test_stake_is_the_largest_size_meeting_daveys_goals() -> None:
     assert sizing.limits == LIMITS
 
 
+def test_stake_never_goes_past_the_peak_median_return() -> None:
+    rng = np.random.default_rng(2)
+    returns = rng.normal(0.01, 0.1, 400)  # growth-optimal size about mean / variance = 1
+    anything = {"risk_of_ruin": 1.01, "median_max_dd": 1.01, "return_dd": -1e9}
+    sizing = choose_stake(returns, 40, [0.5, 1.0, 1.5, 2.0, 3.0], 800, 0.99, anything)
+    peak = sizing.table["median_return"].idxmax()
+    assert peak < 3.0 and sizing.passing(3.0)  # the limits would allow more size
+    assert sizing.stake == peak
+
+
 def test_no_stake_when_nothing_passes() -> None:
     losers = np.array([-0.05, -0.04, 0.01, -0.03] * 10)
     sizing = choose_stake(losers, 30, [0.5, 1.0], 300, 0.5, LIMITS)

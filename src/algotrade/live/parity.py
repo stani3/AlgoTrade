@@ -34,7 +34,7 @@ from .adapter import SpecStrategy, SpecStrategyConfig
 
 warnings.filterwarnings("ignore", message="Timestamp.utcnow is deprecated")
 
-BAR_STEPS = {"4h": "4-HOUR", "1d": "1-DAY"}
+BAR_STEPS = {"1h": "1-HOUR", "4h": "4-HOUR", "1d": "1-DAY"}
 PRECISION = 6
 
 

@@ -5,6 +5,10 @@ into many one-year sequences at several position-size multipliers. The stake is 
 multiplier that still meets all three of Davey's goals (risk of ruin, median drawdown,
 return / drawdown); if none does, the strategy is not tradeable at any size.
 
+It is never larger than the multiplier with the highest median one-year return: past that size
+losses compound faster than gains, so more size means more drawdown for less return, however
+much drawdown the limits allow.
+
 A multiplier scales the strategy's exposure: 0.5 means half the spec's position (for a
 ``vol_target`` spec, half its annual volatility target).
 """
@@ -70,6 +74,7 @@ def choose_stake(
 ) -> Sizing:
     mc = monte_carlo(returns, per_year, runs, ruin, tuple(multipliers), seed)
     sizing = Sizing(mc, None, davey_limits)
-    passing = [size for size in mc.table.index if sizing.passing(size)]
+    peak = mc.table["median_return"].idxmax()
+    passing = [size for size in mc.table.index if size <= peak and sizing.passing(size)]
     sizing.stake = float(max(passing)) if passing else None
     return sizing

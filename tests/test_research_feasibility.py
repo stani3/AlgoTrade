@@ -2,9 +2,11 @@ import json
 
 import pandas as pd
 import pytest
+import yaml
 from research_helpers import commits, draft, make_workspace
 
 from algotrade.research.buildcheck import build_check
+from algotrade.research.criteria import load_criteria
 from algotrade.research.feasibility import feasibility
 from algotrade.research.journal import Journal, TrialLedger
 from algotrade.research.registry import Refused, find_version, register
@@ -77,10 +79,15 @@ def test_random_walk_fails_feasibility(tmp_path) -> None:
         feasibility(ws, criteria, find_version(ws, "i001"), report=False)
 
 
-@pytest.mark.parametrize("scoring", [None, "fixed"])
+@pytest.mark.parametrize("scoring", [None, "compounded", "fixed"])
 def test_card_without_grid_skips_the_optimisation_check(tmp_path, scoring) -> None:
     overrides = FAST if scoring is None else {**FAST, "feasibility.entry_scoring": scoring}
     ws, criteria = make_workspace(tmp_path, overrides=overrides, edge=0.002)
+    if scoring is None:  # an older criteria file, written before the key existed
+        values = yaml.safe_load(ws.criteria_path.read_text(encoding="utf-8"))
+        values["feasibility"].pop("entry_scoring", None)
+        ws.criteria_path.write_text(yaml.safe_dump(values), encoding="utf-8")
+        criteria = load_criteria(ws.criteria_path)
     built(ws, criteria, draft(spec={"type": "ewmac"}))
     result = feasibility(ws, criteria, find_version(ws, "i001"), report=False, commit=False)
     assert not any(c.name.startswith("limited optimisation") for c in result.checks)

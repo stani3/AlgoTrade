@@ -28,14 +28,26 @@ from algotrade.strategies import (
 )
 
 
-def continuous(seed: int, n: int = 1200, drift: float = 0.0) -> pd.DataFrame:
+def continuous(seed: int, n: int = 1200, drift: float = 0.0, freq: str = "4h") -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     close = 100 * np.exp(np.cumsum(rng.normal(drift, 0.012, n)))
     open_ = np.concatenate(([100.0], close[:-1]))
     high = np.maximum(open_, close) * (1 + np.abs(rng.normal(0, 0.003, n)))
     low = np.minimum(open_, close) * (1 - np.abs(rng.normal(0, 0.003, n)))
-    index = pd.date_range("2024-01-01", periods=n, freq="4h", tz="UTC")
+    index = pd.date_range("2024-01-01", periods=n, freq=freq, tz="UTC")
     return pd.DataFrame({"open": open_, "high": high, "low": low, "close": close}, index=index)
+
+
+def test_hourly_bars_match_too() -> None:
+    position = run(to_spec(EWMAC(fast=8, slow=32)), continuous(11, freq="1h"), "1h")
+    assert position.equity_gap() < 1e-8
+    strategy = BreakoutBracket(lookback=10, rsi_length=5, stop_atr=2.0, target_atr=3.0,
+                               cooldown_win=3, cooldown_loss=1)  # fmt: skip
+    bracket = run(to_spec(strategy), continuous(12, freq="1h"), "1h")
+    ours, theirs = closed_trades(bracket), bracket.trades()
+    assert len(ours) == len(theirs) > 20
+    pd.testing.assert_series_equal(ours["exit"], theirs["exit"], check_names=False)
+    assert bracket.equity_gap() < 1e-6
 
 
 def closed_trades(result):

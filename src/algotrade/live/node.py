@@ -47,8 +47,8 @@ TESTNET_KEYS = {
     "binance": ("BINANCE_FUTURES_TESTNET_API_KEY", "BINANCE_FUTURES_TESTNET_API_SECRET"),
     "bybit": ("BYBIT_TESTNET_API_KEY", "BYBIT_TESTNET_API_SECRET"),
 }
-BAR_STEPS = {"4h": "4-HOUR", "1d": "1-DAY"}
-WARMUP_DAYS = {"4h": 120, "1d": 500}
+BAR_STEPS = {"1h": "1-HOUR", "4h": "4-HOUR", "1d": "1-DAY"}
+WARMUP_DAYS = {"1h": 120, "4h": 120, "1d": 500}
 
 
 class NotTestnet(RuntimeError):

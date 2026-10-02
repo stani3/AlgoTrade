@@ -7,7 +7,7 @@ most (exit, market) combinations; Davey looks for roughly 70% of them profitable
 A cell's profit is scored one of two ways:
 
 * ``fixed`` (Davey): every trade has the same size and the profit is the sum of the trade
-  returns, like trading one contract each time.
+  returns, like trading one contract each time. No loss, however large, ends the test early.
 * ``compounded``: the whole equity goes into each trade in turn. On volatile markets a run of
   full-size trades with a positive average can still compound to a loss, so this is harsher.
 """
@@ -23,6 +23,8 @@ from algotrade.backtest.bracket import BracketSignals, simulate_bracket
 from algotrade.backtest.costs import CostModel
 from algotrade.indicators import atr
 from algotrade.strategies import BracketStrategy, Strategy
+
+FIXED_SIZE = 1e-3  # position size, as a share of equity, for the fixed-size run
 
 SCORINGS = {
     "fixed": "fixed size per trade, summed (Davey)",
@@ -90,19 +92,22 @@ def run_entry_test(
         )
         for name, (stop, target, max_bars) in exits.items():
             signals = BracketSignals(long, short, stop, target)
-            result = simulate_bracket(bars, signals, costs, max_bars=max_bars)
-            closed = result.trades[~result.trades["open"].astype(bool)]
-            final = float(result.equity.iloc[-1])
-            fixed = cell_profit(closed["return"], final, "fixed")
-            compounded = cell_profit(closed["return"], final, "compounded")
+            whole = simulate_bracket(bars, signals, costs, max_bars=max_bars)
+            # A tiny size never wipes out the account, so every trade happens; dividing by the
+            # size gives each trade's return per unit traded (fees and funding scale with it).
+            small = simulate_bracket(bars, signals, costs, leverage=FIXED_SIZE, max_bars=max_bars)
+            closed = small.trades[~small.trades["open"].astype(bool)]
+            per_unit = closed["return"] / FIXED_SIZE
+            fixed = cell_profit(per_unit, float(small.equity.iloc[-1]), "fixed")
+            compounded = cell_profit(per_unit, float(whole.equity.iloc[-1]), "compounded")
             profit = fixed if scoring == "fixed" else compounded
             rows.append(
                 {
                     "exit": name,
                     "symbol": symbol,
                     "trades": len(closed),
-                    "win_rate": float((closed["return"] > 0).mean()) if len(closed) else 0.0,
-                    "avg_trade": float(closed["return"].mean()) if len(closed) else 0.0,
+                    "win_rate": float((per_unit > 0).mean()) if len(closed) else 0.0,
+                    "avg_trade": float(per_unit.mean()) if len(closed) else 0.0,
                     "net_return": compounded,
                     "fixed_return": fixed,
                     "profitable": bool(profit > 0 and len(closed) > 0),
