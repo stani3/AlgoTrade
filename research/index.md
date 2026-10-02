@@ -16,6 +16,7 @@ Configurations evaluated so far: **276** (all count towards the deflated Sharpe 
 | i006 | Bollinger squeeze breakout | breakout | price | hours | 1h | S15 | 1 | registered | - | - |
 | i007 | Dual Thrust intraday breakout | breakout | price, calendar | hours | 1h | S16 | 1 | registered | - | - |
 | i008 | US-open session momentum | seasonality | price, calendar | hours | 1h | S33 | 1 | registered | - | - |
+| i009 | Weekend move reversal | seasonality | price, calendar | days | 1h | S32 | 1 | registered | - | - |
 
 ## Screened before the journal (not gated)
 
@@ -56,5 +57,6 @@ failed a gate, so registering a catalogue rule (or a blend of them) is allowed.
 - S16: i007
 - S24: i002
 - S25: i004
+- S32: i009
 - S33: i008
 - S34: i005
