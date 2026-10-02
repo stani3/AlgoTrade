@@ -1,0 +1,22 @@
+{
+  "key": "c9847231836f04e0_4h",
+  "spec": {
+    "type": "i002_shock_fade",
+    "z_entry": 3.0,
+    "hold_bars": 6,
+    "vol_days": 25.0,
+    "allow_short": false
+  },
+  "spec_hash": "c9847231836f04e0",
+  "timeframe": "4h",
+  "source": "idea",
+  "idea": "i002",
+  "version": 2,
+  "label": "i002 v2 Liquidation shock fade",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

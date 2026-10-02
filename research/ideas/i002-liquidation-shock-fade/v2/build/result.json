@@ -1,0 +1,200 @@
+{
+  "idea": "i002",
+  "version": 2,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i002_shock_fade)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i002_shock_fade)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i002_shock_fade)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened bollinger_reversion (4h, vol target 25%): correlation 0.22, exposure difference 0.87"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T15:47:57Z",
+    "commit": "7935e263aa550ac7877bc2b29b3cbf14bd84a03d",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "f11ff0512a243dfc",
+    "spec_hash": "c9847231836f04e0",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "4h",
+        "start": "2019-09-08 16:00:00+00:00",
+        "end": "2025-04-30 20:00:00+00:00",
+        "rows": 12368,
+        "sha": "06bd80f83165a36c"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "4h",
+        "start": "2019-11-27 04:00:00+00:00",
+        "end": "2025-04-30 20:00:00+00:00",
+        "rows": 11891,
+        "sha": "a1d040a1f55c9caa"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "4h",
+        "start": "2020-09-14 04:00:00+00:00",
+        "end": "2025-04-30 20:00:00+00:00",
+        "rows": 10139,
+        "sha": "c7646f40579113da"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "aa7a5ba9475f4fe1_4h",
+      "label": "screened bollinger_reversion (4h, vol target 25%)",
+      "correlation": 0.21603903113421863,
+      "difference": 0.8722859003896319,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_reversion",
+          "length": 20,
+          "mult": 2.0,
+          "trend_filter": 0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "5825ff8654303590_4h",
+      "label": "screened rsi_reversion (4h, vol target 25%)",
+      "correlation": 0.19678320457998436,
+      "difference": 0.8693413845813591,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "rsi_reversion",
+          "length": 14,
+          "lower": 30.0,
+          "upper": 70.0,
+          "exit_level": 50.0,
+          "trend_filter": 0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "cba46962bd213c5f_4h",
+      "label": "screened spec:connors_rsi2 (4h, vol target 25%)",
+      "correlation": 0.12190477413935838,
+      "difference": 0.8766611366997802,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "rsi_reversion",
+          "length": 2,
+          "lower": 10,
+          "upper": 90,
+          "exit_level": 50,
+          "trend_filter": 200,
+          "allow_short": false
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "cba46962bd213c5f_1d",
+      "label": "screened spec:connors_rsi2 (1d, vol target 25%)",
+      "correlation": 0.11920617204097278,
+      "difference": 0.8645281128566251,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "rsi_reversion",
+          "length": 2,
+          "lower": 10,
+          "upper": 90,
+          "exit_level": 50,
+          "trend_filter": 200,
+          "allow_short": false
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "92123e190ef38f7d_1d",
+      "label": "screened spec:connors_rsi2 (1d)",
+      "correlation": 0.11485927321806595,
+      "difference": 0.8595724002729406,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "rsi_reversion",
+        "length": 2,
+        "lower": 10,
+        "upper": 90,
+        "exit_level": 50,
+        "trend_filter": 200,
+        "allow_short": false
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i002_shock_fade.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 57%]\n.....................................................                    [100%]\n125 passed in 4.23s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i002_shock_fade.py"
+  ]
+}
