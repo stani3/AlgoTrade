@@ -1,0 +1,20 @@
+{
+  "key": "cdd1b63a6848312c_1h",
+  "spec": {
+    "type": "i005_settlement_rebound",
+    "threshold": 0.0005,
+    "hold_bars": 2
+  },
+  "spec_hash": "cdd1b63a6848312c",
+  "timeframe": "1h",
+  "source": "idea",
+  "idea": "i005",
+  "version": 1,
+  "label": "i005 v1 Funding-settlement rebound",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

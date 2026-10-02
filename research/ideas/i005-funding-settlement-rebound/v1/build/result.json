@@ -1,0 +1,163 @@
+{
+  "idea": "i005",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i005_settlement_rebound)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i005_settlement_rebound)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i005_settlement_rebound)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened ewmac (1d): correlation 0.34, exposure difference 0.93"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T20:59:52Z",
+    "commit": "132959b5b78ef13a09f19563bf02ce18fc26145a",
+    "criteria_hash": "5f452e63b833a30c",
+    "card_hash": "04233f291b728929",
+    "spec_hash": "cdd1b63a6848312c",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1h",
+        "start": "2019-09-08 17:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 49471,
+        "sha": "c3da94de67cbca04"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1h",
+        "start": "2019-11-27 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 47561,
+        "sha": "94ec5dbab1bf5eeb"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1h",
+        "start": "2020-09-14 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40553,
+        "sha": "db888c1fd4b31a3f"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "552b26e541cdcbb3_1d",
+      "label": "screened ewmac (1d)",
+      "correlation": 0.33618097736377345,
+      "difference": 0.9312039365870899,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "ewmac",
+        "fast": 16,
+        "slow": 64,
+        "vol_days": 25.0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "2bcd19cc53614357_1d",
+      "label": "screened keltner_breakout (1d)",
+      "correlation": 0.31378158109136917,
+      "difference": 0.9372902606399117,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "keltner_breakout",
+        "length": 20,
+        "mult": 2.0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "1363f35df14f6265_1d",
+      "label": "screened carver_breakout (1d)",
+      "correlation": 0.2912934698293032,
+      "difference": 0.9389248794974268,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "carver_breakout",
+        "lookback": 80,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "8b628cbce8af3dce_1d",
+      "label": "screened bollinger_breakout (1d)",
+      "correlation": 0.2888288531728837,
+      "difference": 0.9522110386667564,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "bollinger_breakout",
+        "length": 20,
+        "mult": 2.0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "79348afa63ebe751_1d",
+      "label": "screened donchian_breakout (1d)",
+      "correlation": 0.27887365941175013,
+      "difference": 0.9569152713042752,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "donchian_breakout",
+        "entry": 20,
+        "exit": 10,
+        "allow_short": true
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i005_settlement_rebound.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 27%]\n........................................................................ [ 55%]\n........................................................................ [ 83%]\n..........................................                               [100%]\n258 passed in 9.89s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i005_settlement_rebound.py"
+  ]
+}
