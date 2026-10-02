@@ -1,0 +1,26 @@
+{
+  "key": "293a92281934d445_1d",
+  "spec": {
+    "type": "vol_target",
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0,
+    "strategy": {
+      "type": "momentum",
+      "lookback": 28,
+      "allow_short": true
+    }
+  },
+  "spec_hash": "293a92281934d445",
+  "timeframe": "1d",
+  "source": "idea",
+  "idea": "i003",
+  "version": 1,
+  "label": "i003 v1 Weekly-horizon time-series momentum",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

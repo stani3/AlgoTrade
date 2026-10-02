@@ -1,0 +1,193 @@
+{
+  "idea": "i003",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened momentum (1d, vol target 25%): correlation 0.63, exposure difference 0.19"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T16:02:54Z",
+    "commit": "fc100d416bef73cb78334be12f0b874e9a4558fb",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "a2579f8eb1b0ef24",
+    "spec_hash": "293a92281934d445",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1d",
+        "start": "2019-09-08 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 2062,
+        "sha": "f126f8bd1d428254"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1d",
+        "start": "2019-11-27 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1982,
+        "sha": "3f56db2f53f8b4ca"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1d",
+        "start": "2020-09-14 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1690,
+        "sha": "29bc2cef3542034a"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "ce1e118071d1ce3c_1d",
+      "label": "screened momentum (1d, vol target 25%)",
+      "correlation": 0.6260201512102122,
+      "difference": 0.18598581393135613,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "momentum",
+          "lookback": 20,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "171533323f4cb43b_1d",
+      "label": "screened bollinger_breakout (1d, vol target 25%)",
+      "correlation": 0.6224011877308174,
+      "difference": 0.33611779455064683,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "2eb8c73a7e9c1433_4h",
+      "label": "screened spec:carver_trend (4h, vol target 25%)",
+      "correlation": 0.6214042576426471,
+      "difference": 0.4362144634974589,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "combine",
+          "strategies": [
+            {
+              "type": "ewmac",
+              "fast": 8,
+              "slow": 32,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 16,
+              "slow": 64,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 32,
+              "slow": 128,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 40,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 80,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 160,
+              "allow_short": true
+            }
+          ],
+          "weights": [],
+          "multiplier": 1.2
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "414c818a225240f9_1d",
+      "label": "screened keltner_breakout (1d, vol target 25%)",
+      "correlation": 0.5812163427786755,
+      "difference": 0.45125719560750777,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "keltner_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "ea13f72060d10c45_1d",
+      "label": "screened adx_trend (1d, vol target 25%)",
+      "correlation": 0.5806982896166135,
+      "difference": 0.3758473701259848,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "adx_trend",
+          "length": 14,
+          "threshold": 25.0,
+          "ma_length": 0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [],
+  "modules": []
+}
