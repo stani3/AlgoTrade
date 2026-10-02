@@ -59,6 +59,7 @@ class VersionState:
     holdout_looks: int = 0
     frozen: str | None = None
     abandoned: str | None = None
+    incubation_start: str | None = None
 
     @property
     def last_stage(self) -> str | None:
@@ -73,6 +74,10 @@ class VersionState:
         failed = [s for s in STAGES if self.stages.get(s, {}).get("verdict") == "FAIL"]
         if failed:
             return f"failed:{failed[0]}"
+        if last == "incubation":
+            return "passed:incubation"
+        if self.incubation_start is not None:
+            return "incubating"
         if self.frozen is not None:
             return "frozen"
         return "registered" if last is None else f"passed:{last}"
@@ -172,6 +177,8 @@ class Journal:
                 version.frozen = entry.get("tag", "")
             elif event == "abandoned":
                 version.abandoned = entry.get("reason", "")
+            elif event == "incubation_started":
+                version.incubation_start = entry.get("start")
         return ideas
 
     def next_id(self) -> str:

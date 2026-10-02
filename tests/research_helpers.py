@@ -184,3 +184,31 @@ def write_draft(root: Path, card: Card, name: str = "draft.md") -> Path:
 
 def commits(root: Path) -> list[str]:
     return git(root, "log", "--format=%s").splitlines()
+
+
+FAST_GATES = {
+    "feasibility.monkey_runs": 100,
+    "validation.in_sample_years": 1,
+    "validation.out_of_sample_months": 3,
+    "validation.monte_carlo_runs": 400,
+}
+
+
+def frozen_workspace(root: Path, overrides: dict | None = None) -> tuple[Workspace, Criteria]:
+    """A planted-edge workspace with idea i001 (EWMAC) taken through every gate and frozen."""
+
+    from algotrade.research.buildcheck import build_check
+    from algotrade.research.feasibility import feasibility
+    from algotrade.research.freeze import freeze
+    from algotrade.research.holdout import holdout
+    from algotrade.research.registry import find_version, register
+    from algotrade.research.validate import validate
+
+    ws, criteria = make_workspace(root, overrides={**FAST_GATES, **(overrides or {})}, edge=0.002)
+    card = draft(spec={"type": "ewmac"}, optimise={"fast": [8, 16], "slow": [64, 128]})
+    build_check(ws, criteria, register(ws, criteria, card))
+    for stage in (feasibility, validate, holdout):
+        result = stage(ws, criteria, find_version(ws, "i001"), report=False)
+        assert result.verdict == "PASS", (result.stage, result.reasons)
+    freeze(ws, criteria, find_version(ws, "i001"))
+    return ws, criteria

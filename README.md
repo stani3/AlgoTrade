@@ -20,6 +20,15 @@ python -m scripts.download_data --exchange binanceusdm
 python -m scripts.download_data --exchange bybit --symbols BTC,ETH --timeframes 1d
 ```
 
+USDC-margined perpetuals sit next to the USDT ones (`BTCUSDC` beside `BTCUSDT`); `--symbols ALL`
+takes every active perpetual in the chosen quote currency. On Binance they only exist since
+January 2024, so most of their history falls in the research holdout period:
+
+```powershell
+python -m scripts.download_data --quote USDC --symbols ALL
+python -m scripts.run_backtest --strategy ewmac --quote USDC --symbols BTC,ETH --timeframe 4h
+```
+
 Files land in `data/raw/<exchange>/<SYMBOL>_<tf>.parquet` and `<SYMBOL>_funding.parquet`.
 `algotrade.data.market.load_market()` returns bars indexed by bar-open time (UTC) with each funding
 settlement summed into the bar during which it is charged.
@@ -159,6 +168,7 @@ that need judgement, and deterministic gates in `src/algotrade/research/` (CLI:
 | `strategy-feasibility` | Runs Davey's limited testing, reads the diagnostics for patterns, may propose one revision |
 | `strategy-validate` | Walk-forward, deflated Sharpe, Monte Carlo stake, the one holdout look, freeze, and the approval package |
 | `strategy-pipeline` | The loop: ideas through validation within a budget, moving on after each failure |
+| `strategy-incubate` | After the user approves: parity check, testnet paper trading set-up, periodic incubation reports |
 
 ```powershell
 python -m scripts.research seed                  # once: import pre-journal experiments
@@ -169,6 +179,8 @@ python -m scripts.research validate i002         # walk-forward, deflated Sharpe
 python -m scripts.research holdout i002          # the single look at data after 2025-05-01
 python -m scripts.research freeze i002           # frozen.json, decision.md, git tag
 python -m scripts.research report i002 validation   # rebuild an HTML report from the record
+python -m scripts.research incubate i002         # start incubation (only after the user approved)
+python -m scripts.research incubation-report i002   # shadow forward test + testnet slippage
 python -m scripts.research status                # refresh research/index.md
 python -m scripts.research revise i002 v2.md --reason "..."   # one revision per idea
 python -m scripts.research abandon i002 --reason "..."
@@ -216,6 +228,13 @@ ruin under 10%, median drawdown under 40% and return/drawdown above 2. Then the 
 journaled look at the data after the cutoff, judged against paths bootstrapped from the
 out-of-sample bar returns. A strategy that passes is frozen (`frozen.json`, `decision.md`, tag
 `strategy/<id>-v<n>`) and shown to the user with its reports before anyone decides to incubate.
+
+Incubation watches the frozen strategy, unchanged, on new data. Its quality is judged by a
+shadow forward test (our engine on real mainnet bars since the start) against the 5th percentile
+return and 95th percentile drawdown of bootstrapped paths of the same length; testnet paper
+trading (NautilusTrader, started by the user) is used to measure execution, its slippage
+compared with the cost model. It needs `incubation.min_days` and `min_trades` before it can pass.
+Going live with real money is never part of the pipeline.
 
 `research/index.md` is the readable list of every idea and why it stopped.
 

@@ -14,6 +14,8 @@ Examples:
     python -m scripts.research holdout i002
     python -m scripts.research freeze i002
     python -m scripts.research report i002 validation
+    python -m scripts.research incubate i002                  # only after the user approved
+    python -m scripts.research incubation-report i002
     python -m scripts.research revise i002 path/to/draft_v2.md --reason "short side lost in every regime"
     python -m scripts.research abandon i002 --reason "needs open-interest data we do not have"
 """
@@ -30,6 +32,8 @@ from algotrade.research.criteria import load_criteria
 from algotrade.research.feasibility import feasibility
 from algotrade.research.freeze import freeze
 from algotrade.research.holdout import holdout
+from algotrade.research.incubation import incubation_report
+from algotrade.research.incubation import start as start_incubation
 from algotrade.research.index import write_index
 from algotrade.research.journal import Journal, TrialLedger
 from algotrade.research.registry import Refused, abandon, find_version, register, revise
@@ -164,6 +168,32 @@ def cmd_freeze(ws: Workspace, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_incubate(ws: Workspace, args: argparse.Namespace) -> int:
+    version = find_version(ws, args.idea, args.version)
+    record = start_incubation(ws, version, when=args.start, commit=not args.no_commit)
+    print(f"Incubation of {version.idea} v{version.version} started {record['start']}")
+    print(f"Paper-trade it with: python -m scripts.paper_trade {version.idea}")
+    return 0
+
+
+def cmd_incubation_report(ws: Workspace, args: argparse.Namespace) -> int:
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    outcome = incubation_report(
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report
+    )
+    for check in outcome.result.checks:
+        print(check.line())
+    for note in outcome.result.notes:
+        print(f"note: {note}")
+    if outcome.result.report:
+        print(f"report: {outcome.result.report}")
+    print(
+        f"INCUBATION {outcome.status.upper()} ({outcome.days:.0f} days, {outcome.trades:.0f} trades)"
+    )
+    return 1 if outcome.status == "fail" else 0
+
+
 def cmd_report(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
@@ -228,6 +258,18 @@ def parser() -> argparse.ArgumentParser:
     frz.add_argument("idea")
     frz.add_argument("--version", type=int)
     frz.set_defaults(run=cmd_freeze)
+
+    inc = sub.add_parser("incubate", help="Start incubation of a frozen strategy (user approved)")
+    inc.add_argument("idea")
+    inc.add_argument("--version", type=int)
+    inc.add_argument("--start", help="Start time (default: now, UTC)")
+    inc.set_defaults(run=cmd_incubate)
+
+    incr = sub.add_parser("incubation-report", help="Score the shadow forward test and fills")
+    incr.add_argument("idea")
+    incr.add_argument("--version", type=int)
+    incr.add_argument("--no-report", action="store_true")
+    incr.set_defaults(run=cmd_incubation_report)
 
     rep = sub.add_parser("report", help="Rebuild a stage's HTML report from the committed result")
     rep.add_argument("idea")
