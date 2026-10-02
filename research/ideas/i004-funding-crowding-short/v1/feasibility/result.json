@@ -1,0 +1,171 @@
+{
+  "idea": "i004",
+  "version": 1,
+  "stage": "feasibility",
+  "verdict": "FAIL",
+  "reasons": [
+    "entry test: share of (exit, symbol) cells profitable 0.075 (needs >= 70%)",
+    "core system: median Sharpe across symbols -0.564 (needs >= 0.3)",
+    "core system: share of symbols with Sharpe > 0 0.1 (needs >= 60%)",
+    "core system: median closed trades per symbol 22.5 (needs >= 30)",
+    "monkey test: share of random monkeys beaten 0.009 (needs >= 90%)",
+    "limited optimisation: share of grid combinations profitable 0 (needs >= 70%)"
+  ],
+  "checks": [
+    {
+      "name": "entry test: share of (exit, symbol) cells profitable",
+      "value": 0.075,
+      "limit": ">= 70%",
+      "passed": false
+    },
+    {
+      "name": "core system: median Sharpe across symbols",
+      "value": -0.5635617981374481,
+      "limit": ">= 0.3",
+      "passed": false
+    },
+    {
+      "name": "core system: share of symbols with Sharpe > 0",
+      "value": 0.1,
+      "limit": ">= 60%",
+      "passed": false
+    },
+    {
+      "name": "core system: median closed trades per symbol",
+      "value": 22.5,
+      "limit": ">= 30",
+      "passed": false
+    },
+    {
+      "name": "monkey test: share of random monkeys beaten",
+      "value": 0.009,
+      "limit": ">= 90%",
+      "passed": false
+    },
+    {
+      "name": "limited optimisation: share of grid combinations profitable",
+      "value": 0.0,
+      "limit": ">= 70%",
+      "passed": false
+    }
+  ],
+  "metrics": {
+    "median Sharpe at the chosen parameters": -0.22250564236306558,
+    "plateau score of the chosen cell": -0.3405985702433032,
+    "monkey median Sharpe (median run)": -0.22275574721159688,
+    "median CAGR at the chosen parameters": -0.03689372940755892,
+    "worst drawdown at the chosen parameters": -0.6218969379544663
+  },
+  "trials": 27,
+  "notes": [
+    "Entry test by exit (fixed size per trade, summed (Davey)):\n\n| exit | profitable | trades | win_rate | avg_trade |\n|---|---|---|---|---|\n| 5 bars | 0.1 | 180 | 0.4 | -0.029 |\n| 10 bars | 0.0 | 113 | 0.333 | -0.134 |\n| 20 bars | 0.0 | 102 | 0.292 | -0.172 |\n| 2/4 ATR bracket | 0.2 | 169 | 0.244 | -0.033 |",
+    "Long against short (chosen parameters):\n\n| index | trades | win_rate | avg_return | sum_return | median_bars |\n|---|---|---|---|---|---|\n| all | 135.0 | 0.474 | -0.013 | -1.706 | 3.0 |\n| long | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |\n| short | 135.0 | 0.474 | -0.013 | -1.706 | 3.0 |",
+    "Regimes (chosen parameters):\n\n| kind | regime | share_of_time | median_sharpe | mean_net |\n|---|---|---|---|---|\n| trend | neither | 0.206 | -0.191 | 0.0 |\n| trend | ranging (ADX<=20) | 0.272 | 0.414 | -0.0 |\n| trend | trending (ADX>=25) | 0.508 | -0.357 | -0.0 |\n| trend | warm-up | 0.014 | 0.0 | 0.0 |\n| volatility | high vol | 0.331 | 0.472 | 0.0 |\n| volatility | low vol | 0.331 | -0.31 | -0.0 |\n| volatility | mid vol | 0.331 | -0.706 | -0.0 |\n| volatility | warm-up | 0.007 | 0.0 | 0.0 |",
+    "Excursions (MAE/MFE):\n\n| index | median_mae | p75_mae | median_mfe | p75_mfe | median_mae_atr | median_mfe_atr |\n|---|---|---|---|---|---|---|\n| winners | 0.024 | 0.044 | 0.075 | 0.121 | 0.395 | 1.112 |\n| losers | 0.083 | 0.143 | 0.026 | 0.044 | 1.283 | 0.491 |"
+  ],
+  "report": "reports/research/i004/v1/feasibility/report.html",
+  "provenance": {
+    "created": "2026-10-02T20:00:00Z",
+    "commit": "a6552cbc12a752a3e561e45599f4da2466f43072",
+    "criteria_hash": "05ee199a428ad254",
+    "card_hash": "1242c7e9a2436fc1",
+    "spec_hash": "819d200fcd262ed0",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1d",
+        "start": "2019-09-08 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 2062,
+        "sha": "f126f8bd1d428254"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1d",
+        "start": "2019-11-27 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1982,
+        "sha": "3f56db2f53f8b4ca"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1d",
+        "start": "2020-09-14 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1690,
+        "sha": "29bc2cef3542034a"
+      },
+      {
+        "symbol": "BNB",
+        "timeframe": "1d",
+        "start": "2020-02-10 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1907,
+        "sha": "7633bc644b960f47"
+      },
+      {
+        "symbol": "XRP",
+        "timeframe": "1d",
+        "start": "2020-01-06 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1942,
+        "sha": "bf4e229044a652cf"
+      },
+      {
+        "symbol": "DOGE",
+        "timeframe": "1d",
+        "start": "2020-07-10 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1756,
+        "sha": "a18df5e2737fc95e"
+      },
+      {
+        "symbol": "ADA",
+        "timeframe": "1d",
+        "start": "2020-01-31 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1917,
+        "sha": "16e15e86c47c7513"
+      },
+      {
+        "symbol": "AVAX",
+        "timeframe": "1d",
+        "start": "2020-09-23 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1681,
+        "sha": "9ae89bb1cabc8ecb"
+      },
+      {
+        "symbol": "LINK",
+        "timeframe": "1d",
+        "start": "2020-01-17 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1931,
+        "sha": "be4816354b9d0a85"
+      },
+      {
+        "symbol": "LTC",
+        "timeframe": "1d",
+        "start": "2020-01-09 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1939,
+        "sha": "e54fe7f531a2a19f"
+      }
+    ]
+  },
+  "chosen": {
+    "quantile": 0.8,
+    "funding_days": 14,
+    "hold_bars": 3
+  },
+  "chosen_spec": {
+    "type": "i004_funding_crowding_short",
+    "funding_days": 14,
+    "quantile": 0.8,
+    "hold_bars": 3,
+    "history_days": 365,
+    "exit_quantile": 0.5,
+    "neutral_daily_funding": 0.0003,
+    "stop_atr": 3.0
+  }
+}
