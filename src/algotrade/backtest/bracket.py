@@ -13,7 +13,9 @@ Fill rules, in the order they are applied on every bar ``i``:
    a bar that opens beyond the stop or the target exits at the open (gap); otherwise if the
    bar's range touches both levels the stop is assumed first (conservative); otherwise the
    level that was touched fills exactly.
-4. The position is marked to the close and pays funding if still open at the close.
+4. The position is marked to the close and pays funding if still open at the close. With
+   ``max_bars`` > 0, a trade still open after ``max_bars`` bars (the entry bar counts as one)
+   then exits at that close with slippage, a market-on-close order (Davey's fixed-bar exit).
 5. Kill switch: if equity <= (1 - kill_drawdown) * peak equity, trading stops for good.
 6. A new signal at the close is accepted only when flat, not killed, and at least
    ``cooldown_win`` (last trade made money after costs) or ``cooldown_loss`` (otherwise) bars
@@ -36,8 +38,8 @@ from numba import njit
 from .costs import CostModel
 from .engine import TRADE_COLUMNS, BacktestResult
 
-EXIT_REASONS = ("stop", "target", "kill", "liquidated", "open")
-STOP, TARGET, KILL, LIQUIDATED, OPEN = range(5)
+EXIT_REASONS = ("stop", "target", "kill", "liquidated", "open", "time")
+STOP, TARGET, KILL, LIQUIDATED, OPEN, TIME = range(6)
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,7 @@ def _simulate(
     fee_rate: float,
     slip_rate: float,
     leverage: float,
+    max_bars: int,
 ):
     n = close.shape[0]
     gross = np.zeros(n)
@@ -190,6 +193,29 @@ def _simulate(
             f = pos * qty * close[i] * funding[i]
             trade_funding += f
 
+        # 4b. fixed-bar exit at the close
+        if pos != 0 and max_bars > 0 and i - entry_bar + 1 >= max_bars:
+            exit_px = close[i] * (1.0 - pos * slip_rate)
+            exit_fee = qty * exit_px * fee_rate
+            c += exit_fee + qty * abs(close[i] - exit_px)
+            traded[i] += qty * exit_px
+            pnl = pos * qty * (exit_px - entry_px) - entry_fee - exit_fee - trade_funding
+            t_entry[count] = entry_bar
+            t_exit[count] = i
+            t_dir[count] = pos
+            t_qty[count] = qty
+            t_entry_px[count] = entry_px
+            t_exit_px[count] = exit_px
+            t_reason[count] = TIME
+            t_pnl[count] = pnl
+            t_equity[count] = entry_equity
+            count += 1
+            cooldown = cooldown_win if pnl > 0 else cooldown_loss
+            last_exit = i
+            reason = TIME
+            pos = 0
+            qty = 0.0
+
         new_equity = equity + g - c - f
         if new_equity <= 0.0:
             new_equity = 0.0
@@ -274,8 +300,12 @@ def simulate_bracket(
     cooldown_win: int = 0,
     cooldown_loss: int = 0,
     kill_drawdown: float = 1.0,
+    max_bars: int = 0,
 ) -> BacktestResult:
-    """Run the bracket simulation and return a ledger compatible with ``run_backtest``."""
+    """Run the bracket simulation and return a ledger compatible with ``run_backtest``.
+
+    ``max_bars`` > 0 adds a time exit at the close of the trade's ``max_bars``-th bar.
+    """
 
     costs = costs or CostModel()
 
@@ -306,6 +336,7 @@ def simulate_bracket(
         costs.fee_bps / 10_000,
         costs.slippage_bps / 10_000,
         float(leverage),
+        int(max_bars),
     )
 
     close = floats(bars["close"])

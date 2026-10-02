@@ -164,3 +164,57 @@ def test_no_signals_means_untouched_equity() -> None:
     assert result.ledger["equity"].eq(1.0).all()
     assert summarize(result)["trades"] == 0
     assert run(directional(1, flat(5)), costs=ZERO).ledger["net"].eq(0).all()
+
+
+# --- fixed-bar (time) exits ---------------------------------------------------------------
+
+
+@DIRECTIONS
+def test_time_exit_at_the_close_of_the_nth_bar_with_slippage(d) -> None:
+    bars = directional(d, [(0, 0, 0, 0), (0, 1, 1, 1), (1, 2, 1, 2), (2, 3, 1, 3), (3, 3, 3, 3)])
+    trade = only_trade(run(bars, costs=SLIP, max_bars=3, **entry(d, 0)))
+    assert trade["exit_reason"] == "time"
+    assert trade["exit"] == bars.index[3] and trade["bars"] == 3
+    assert trade["exit_price"] == pytest.approx((BASE + 3 * d) * (1 - d * 0.001))
+
+
+@DIRECTIONS
+def test_one_bar_trade_exits_at_the_entry_bars_close(d) -> None:
+    bars = directional(d, [(0, 0, 0, 0), (0, 2, 1, 2), (2, 2, 2, 2)])
+    trade = only_trade(run(bars, max_bars=1, **entry(d, 0)))
+    assert trade["exit_reason"] == "time" and trade["bars"] == 1
+    assert trade["entry"] == trade["exit"] == bars.index[1]
+    # Quantity 1 / BASE bought at BASE, sold 2 points better at the same bar's close.
+    assert trade["pnl"] == pytest.approx(2 / BASE)
+
+
+@DIRECTIONS
+def test_stop_before_the_time_limit_wins(d) -> None:
+    bars = directional(d, [(0, 0, 0, 0), (0, 1, 6, -1), (0, 0, 0, 0), (0, 0, 0, 0)])
+    trade = only_trade(run(bars, max_bars=3, **entry(d, 0)))
+    assert trade["exit_reason"] == "stop" and trade["bars"] == 1
+
+
+@DIRECTIONS
+def test_time_exit_pays_the_exit_bars_funding(d) -> None:
+    bars = directional(d, [(0, 0, 0, 0), (0, 0, 0, 0), (0, 0, 0, 0)], funding=[0, 0.001, 0.002])
+    costs = CostModel(fee_bps=0.0, slippage_bps=0.0, include_funding=True)
+    trade = only_trade(run(bars, costs=costs, max_bars=2, **entry(d, 0)))
+    # One unit of notional held through bars 1 and 2: funding paid on both closes.
+    assert trade["exit"] == bars.index[2]
+    assert trade["return"] == pytest.approx(-d * (0.001 + 0.002))
+
+
+@DIRECTIONS
+def test_infinite_distances_mean_time_exits_only(d) -> None:
+    bars = directional(d, [(0, 0, 0, 0), (0, 50, 50, 0), (0, 80, 80, 1), (1, 1, 1, 1)])
+    inf = float("inf")
+    trade = only_trade(run(bars, stop=inf, target=inf, max_bars=2, **entry(d, 0)))
+    assert trade["exit_reason"] == "time" and trade["exit_price"] == BASE + d
+
+
+@DIRECTIONS
+def test_time_limit_not_reached_leaves_the_trade_open(d) -> None:
+    bars = directional(d, flat(4))
+    trade = only_trade(run(bars, max_bars=10, **entry(d, 0)))
+    assert trade["exit_reason"] == "open" and bool(trade["open"])

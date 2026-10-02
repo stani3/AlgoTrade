@@ -13,6 +13,8 @@ from .journal import Journal, VersionState, now
 from .split import DataWindow
 from .workspace import Workspace
 
+NEWLINE = chr(10)
+
 
 @dataclass
 class StageResult:
@@ -99,8 +101,10 @@ def summary_markdown(result: StageResult, title: str) -> str:
         lines += ["| Metric | Value |", "|---|---|"]
         lines += [f"| {key} | {_value(value)} |" for key, value in result.metrics.items()]
         lines.append("")
-    if result.notes:
-        lines += ["Notes:", ""] + [f"- {note}" for note in result.notes] + [""]
+    short = [note for note in result.notes if NEWLINE not in note]
+    if short:
+        lines += ["Notes:", ""] + [f"- {note}" for note in short] + [""]
+    lines += [part for note in result.notes if NEWLINE in note for part in (note, "")]
     if result.report:
         lines += [f"Report: `{result.report}`", ""]
     lines += [

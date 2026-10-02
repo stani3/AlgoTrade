@@ -40,6 +40,7 @@ class BracketStrategy(Strategy):
             cooldown_win=self.cooldown_win,
             cooldown_loss=self.cooldown_loss,
             kill_drawdown=self.kill_drawdown,
+            max_bars=getattr(self, "max_bars", 0),
         )
 
     def target_position(self, bars: pd.DataFrame) -> pd.Series:

@@ -64,3 +64,17 @@ def summarize(result: BacktestResult) -> dict[str, float]:
         "cost_drag_per_year": float(ledger["trading_cost"].sum() / years),
         "funding_drag_per_year": float(ledger["funding_cost"].sum() / years),
     }
+
+
+def aggregate(per_symbol: pd.DataFrame) -> dict[str, float]:
+    """Summarise per-symbol ``summarize`` rows by how consistently they work, not the best one."""
+
+    return {
+        "median_sharpe": per_symbol["sharpe"].median(),
+        "min_sharpe": per_symbol["sharpe"].min(),
+        "positive": (per_symbol["sharpe"] > 0).mean(),
+        "median_cagr": per_symbol["cagr"].median(),
+        "worst_dd": per_symbol["max_drawdown"].min(),
+        "trades_per_year": per_symbol["trades_per_year"].median(),
+        "cost_drag": per_symbol["cost_drag_per_year"].median(),
+    }

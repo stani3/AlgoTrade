@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
-from algotrade.backtest.metrics import summarize
+from algotrade.backtest.metrics import aggregate, summarize
 from algotrade.backtest.runner import backtest, cost_model, load_bars
 from algotrade.strategies import RULES, BracketStrategy, Strategy, VolTarget, from_spec
 from scripts.download_data import DEFAULT_UNIVERSE
@@ -27,18 +27,6 @@ def candidates(spec_dir: Path | None) -> dict[str, Strategy]:
         for path in sorted(spec_dir.glob("*.json")):
             found[f"spec:{path.stem}"] = from_spec(path)
     return found
-
-
-def aggregate(per_symbol: pd.DataFrame) -> dict[str, float]:
-    return {
-        "median_sharpe": per_symbol["sharpe"].median(),
-        "min_sharpe": per_symbol["sharpe"].min(),
-        "positive": (per_symbol["sharpe"] > 0).mean(),
-        "median_cagr": per_symbol["cagr"].median(),
-        "worst_dd": per_symbol["max_drawdown"].min(),
-        "trades_per_year": per_symbol["trades_per_year"].median(),
-        "cost_drag": per_symbol["cost_drag_per_year"].median(),
-    }
 
 
 def main(args: argparse.Namespace) -> None:

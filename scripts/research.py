@@ -9,6 +9,7 @@ Examples:
     python -m scripts.research new path/to/draft_card.md
     python -m scripts.research status
     python -m scripts.research build-check i002
+    python -m scripts.research feasibility i002
     python -m scripts.research revise i002 path/to/draft_v2.md --reason "short side lost in every regime"
     python -m scripts.research abandon i002 --reason "needs open-interest data we do not have"
 """
@@ -22,6 +23,7 @@ from pathlib import Path
 from algotrade.research.buildcheck import build_check
 from algotrade.research.cards import CardError, read_card
 from algotrade.research.criteria import load_criteria
+from algotrade.research.feasibility import feasibility
 from algotrade.research.index import write_index
 from algotrade.research.journal import Journal, TrialLedger
 from algotrade.research.registry import Refused, abandon, find_version, register, revise
@@ -100,6 +102,28 @@ def cmd_build_check(ws: Workspace, args: argparse.Namespace) -> int:
     return 0 if result.verdict == "PASS" else 1
 
 
+def print_result(result) -> int:
+    for check in result.checks:
+        print(check.line())
+    for key, value in result.extra.get("chosen", {}).items():
+        print(f"chosen {key} = {value}")
+    if result.report:
+        print(f"report: {result.report}")
+    print(f"{result.stage.upper()} {result.verdict}")
+    for reason in result.reasons:
+        print(f"  - {reason}")
+    return 0 if result.verdict == "PASS" else 1
+
+
+def cmd_feasibility(ws: Workspace, args: argparse.Namespace) -> int:
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    result = feasibility(
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report
+    )
+    return print_result(result)
+
+
 def parser() -> argparse.ArgumentParser:
     main = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -132,6 +156,12 @@ def parser() -> argparse.ArgumentParser:
     build.add_argument("idea")
     build.add_argument("--version", type=int)
     build.set_defaults(run=cmd_build_check)
+
+    feas = sub.add_parser("feasibility", help="Davey's limited testing on development data")
+    feas.add_argument("idea")
+    feas.add_argument("--version", type=int)
+    feas.add_argument("--no-report", action="store_true", help="Skip the HTML report")
+    feas.set_defaults(run=cmd_feasibility)
     return main
 
 

@@ -11,7 +11,6 @@ Example:
 from __future__ import annotations
 
 import argparse
-import itertools
 import json
 from pathlib import Path
 
@@ -19,12 +18,11 @@ import numpy as np
 import pandas as pd
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
-from algotrade.backtest.metrics import summarize
-from algotrade.backtest.runner import backtest, cost_model, load_bars
+from algotrade.backtest.runner import cost_model, load_bars
 from algotrade.strategies import STRATEGIES, from_spec, to_spec
+from algotrade.validation.optimize import run_grid
 from scripts.download_data import DEFAULT_UNIVERSE
 from scripts.run_backtest import parse_value
-from scripts.scan import aggregate
 
 FORMATS = {
     "median_sharpe": "{:.2f}",
@@ -94,24 +92,16 @@ def main(args: argparse.Namespace) -> None:
         s: load_bars(args.exchange, s, args.timeframe, args.start, args.end) for s in symbols
     }
 
-    rows = []
-    combos = list(itertools.product(*grid.values()))
-    for combo in combos:
-        params = dict(zip(grid, combo, strict=True))
-        strategy = from_spec({**base, **params})
-        results = {
-            s: backtest(strategy, bars, costs, args.max_leverage) for s, bars in universe.items()
-        }
-        per_symbol = pd.DataFrame({s: summarize(r) for s, r in results.items()}).T
-        killed = np.mean(["killed_at" in r.meta for r in results.values()])
-        rows.append({**params, **aggregate(per_symbol), "killed": killed})
+    board = run_grid(base, grid, universe, costs, args.max_leverage)
+    combos = len(board)
 
     keys = list(grid)
-    board = pd.DataFrame(rows).sort_values("median_sharpe", ascending=False)
-    trials = len(combos) * len(universe)
+    board = board.drop(columns=["spec", "spec_hash", "median_trades"])
+    board = board.sort_values("median_sharpe", ascending=False)
+    trials = combos * len(universe)
     print(json.dumps(base))
     print(
-        f"{len(combos)} combinations x {len(universe)} symbols = {trials} backtests | "
+        f"{combos} combinations x {len(universe)} symbols = {trials} backtests | "
         f"{args.exchange} {args.timeframe} | killed = share of symbols where the kill switch fired"
     )
     shown = board.copy()

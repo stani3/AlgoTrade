@@ -108,3 +108,18 @@ def test_cli_runs_as_a_module(tmp_path, monkeypatch) -> None:
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_path(str(Path(cli.__file__)), run_name="__main__")
     assert exit_info.value.code == 0
+
+
+def test_print_result_shows_chosen_parameters_and_report(capsys) -> None:
+    result = StageResult(
+        "i001",
+        1,
+        "feasibility",
+        [at_least("monkey", 0.95, 0.9)],
+        report="reports/research/i001/v1/feasibility/report.html",
+        extra={"chosen": {"fast": 16}},
+    )
+    assert cli.print_result(result) == 0
+    out = capsys.readouterr().out
+    assert "chosen fast = 16" in out and "report: reports/research" in out
+    assert "FEASIBILITY PASS" in out

@@ -125,6 +125,8 @@ earlier trades:
   touches both, the stop is assumed first. Targets are limit orders and pay no slippage.
 - After a winning trade wait `cooldown_win` bars, after a loser (after costs) `cooldown_loss` bars.
 - Kill switch: once equity is `kill_drawdown` below its peak the strategy stops trading for good.
+- Optional time exit (`max_bars`, used by the entry test): a trade still open after that many bars
+  exits at the close with slippage. Infinite stop/target distances mean time exits only.
 
 Explore its parameters with the grid script. It prints the total number of trials and saves a CSV
 plus median-Sharpe heatmaps (look for a broad plateau, not a single bright cell):
@@ -154,11 +156,13 @@ that need judgement, and deterministic gates in `src/algotrade/research/` (CLI:
 |---|---|
 | `strategy-ideas` | Proposes ideas from books, classic indicators and crypto effects and pre-registers them as idea cards |
 | `strategy-build` | Implements a card as a spec, writing new strategy code with a full test suite when needed |
+| `strategy-feasibility` | Runs Davey's limited testing, reads the diagnostics for patterns, may propose one revision |
 
 ```powershell
 python -m scripts.research seed                  # once: import pre-journal experiments
 python -m scripts.research new draft_card.md     # pre-register an idea (assigns i002, i003...)
 python -m scripts.research build-check i002      # ruff, tests, 100% coverage, duplicate checks
+python -m scripts.research feasibility i002      # limited testing on development data
 python -m scripts.research status                # refresh research/index.md
 python -m scripts.research revise i002 v2.md --reason "..."   # one revision per idea
 python -m scripts.research abandon i002 --reason "..."
@@ -185,6 +189,14 @@ Rules the code enforces:
   fingerprint are committed: each stage makes a local commit (never a push). Tested strategy
   versions never change behaviour; `tests/ideas/test_fingerprints.py` recomputes every stored
   fingerprint to prove it.
+
+Feasibility (development data only) runs Davey's limited testing: the entry test (the
+strategy's entries with 5/10/20-bar time exits and a 2/4 ATR bracket), the core system across
+all symbols, a monkey test against 1,000 random strategies with the same habits, limited
+optimisation over the card's pre-registered grid (most combinations must make money; parameters
+come from the centre of the best plateau, not the best cell), and diagnostics for the agent to
+read: long vs short, symbols, years, ADX and volatility regimes, holding times, MAE/MFE. It
+writes the Davey report for the chosen parameters to `reports/research/<id>/v<n>/feasibility/`.
 
 `research/index.md` is the readable list of every idea and why it stopped.
 

@@ -21,11 +21,20 @@ SYMBOLS = ("BTC", "ETH", "SOL")
 FREQ = {"4h": "4h", "1d": "1D"}
 
 
-def synthetic_bars(seed: int, start: str, end: str, freq: str) -> pd.DataFrame:
+def synthetic_bars(
+    seed: int, start: str, end: str, freq: str, edge: float = 0.0, waves: bool = True
+) -> pd.DataFrame:
+    """Random walk, by default with slow waves; ``edge`` > 0 plants persistent trends (regimes
+    of a few weeks with a drift of ``edge`` per bar). ``waves=False`` with no edge is a pure
+    random walk that no rule should beat."""
+
     index = pd.date_range(start, end, freq=freq, tz="UTC", inclusive="left")
     rng = np.random.default_rng(seed)
     n = len(index)
-    trend = np.sin(np.arange(n) / (n / 9)) * 0.004
+    trend = np.sin(np.arange(n) / (n / 9)) * 0.004 * waves
+    if edge:
+        regime = np.repeat(rng.choice([-1.0, 1.0], n // 120 + 1), 120)[:n]
+        trend = trend + edge * regime
     close = 100 * np.exp(np.cumsum(rng.normal(0, 0.02, n) + trend))
     open_ = np.concatenate(([close[0]], close[:-1]))
     spread = np.abs(rng.normal(0, 0.01, n))
@@ -47,6 +56,8 @@ def write_market(
     start: str = "2023-01-01",
     end: str = "2026-01-01",
     exchange: str = "binanceusdm",
+    edge: float = 0.0,
+    waves: bool = True,
 ) -> None:
     for i, symbol in enumerate(symbols):
         market = MarketId(exchange=exchange, base=symbol)
@@ -54,7 +65,7 @@ def write_market(
             path = ohlcv_path(root, market, timeframe)
             path.parent.mkdir(parents=True, exist_ok=True)
             # Same seed for both timeframes keeps the symbols distinct but deterministic.
-            synthetic_bars(100 + i, start, end, freq).to_parquet(path, index=False)
+            synthetic_bars(100 + i, start, end, freq, edge, waves).to_parquet(path, index=False)
         stamps = pd.date_range(start, end, freq="8h", tz="UTC", inclusive="left")
         rng = np.random.default_rng(200 + i)
         pd.DataFrame(
@@ -77,7 +88,12 @@ def init_repo(root: Path) -> None:
 
 
 def make_workspace(
-    root: Path, overrides: dict | None = None, repo: bool = True, market: bool = True
+    root: Path,
+    overrides: dict | None = None,
+    repo: bool = True,
+    market: bool = True,
+    edge: float = 0.0,
+    waves: bool = True,
 ) -> tuple[Workspace, Criteria]:
     """Workspace with the real criteria.yaml (optionally overridden) and synthetic data."""
 
@@ -94,7 +110,7 @@ def make_workspace(
     (research / "criteria.yaml").write_text(yaml.safe_dump(criteria), encoding="utf-8")
     shutil.copytree(REPO / "specs", root / "specs")
     if market:
-        write_market(root / "data" / "raw")
+        write_market(root / "data" / "raw", edge=edge, waves=waves)
     if repo:
         init_repo(root)
         (root / ".gitignore").write_text("data/\nreports/\n", encoding="utf-8")

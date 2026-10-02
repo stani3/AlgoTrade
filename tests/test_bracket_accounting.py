@@ -172,7 +172,7 @@ def test_invariants_on_random_markets(seed) -> None:
 
 
 def reference_simulation(
-    bars, signals, costs, leverage, cooldown_win, cooldown_loss, kill_drawdown
+    bars, signals, costs, leverage, cooldown_win, cooldown_loss, kill_drawdown, max_bars=0
 ):
     """A deliberately plain re-implementation of the documented rules, using cash accounting.
 
@@ -269,6 +269,10 @@ def reference_simulation(
             cash -= paid
             trade["funding"] += paid
 
+        if trade is not None and max_bars and i - trade["entry_bar"] + 1 >= max_bars:
+            close_trade(i, c[i] * (1 - trade["dir"] * slip), "time")
+            trade, closed_this_bar = None, True
+
         open_pnl = (
             0.0 if trade is None else trade["dir"] * trade["qty"] * (c[i] - trade["entry_px"])
         )
@@ -343,24 +347,28 @@ def random_signals(bars, seed):
 
 
 SCENARIOS = [
-    pytest.param(CostModel(0.0, 0.0, include_funding=False), 1.0, 0, 0, 1.0, id="frictionless"),
-    pytest.param(CostModel(5.0, 3.0), 1.0, 5, 20, 0.5, id="book-rules"),
-    pytest.param(CostModel(5.5, 10.0), 2.0, 3, 7, 0.3, id="levered-tight-kill"),
-    pytest.param(CostModel(5.0, 3.0), 25.0, 1, 1, 1.0, id="liquidation-prone"),
+    pytest.param(CostModel(0.0, 0.0, include_funding=False), 1.0, 0, 0, 1.0, 0, id="frictionless"),
+    pytest.param(CostModel(5.0, 3.0), 1.0, 5, 20, 0.5, 0, id="book-rules"),
+    pytest.param(CostModel(5.5, 10.0), 2.0, 3, 7, 0.3, 0, id="levered-tight-kill"),
+    pytest.param(CostModel(5.0, 3.0), 25.0, 1, 1, 1.0, 0, id="liquidation-prone"),
+    pytest.param(CostModel(5.0, 3.0), 1.0, 2, 4, 0.6, 6, id="time-exit"),
+    pytest.param(CostModel(5.0, 3.0), 1.0, 0, 0, 1.0, 1, id="one-bar-trades"),
+    pytest.param(CostModel(5.0, 3.0), 30.0, 0, 0, 1.0, 3, id="time-exit-liquidation"),
 ]
+SCENARIO_ARGS = ("costs", "leverage", "cd_loss", "cd_win", "kill", "max_bars")
 
 
 @pytest.mark.parametrize("seed", SEEDS)
-@pytest.mark.parametrize(("costs", "leverage", "cd_loss", "cd_win", "kill"), SCENARIOS)
-def test_matches_reference_simulation(seed, costs, leverage, cd_loss, cd_win, kill) -> None:
+@pytest.mark.parametrize(SCENARIO_ARGS, SCENARIOS)
+def test_matches_reference_simulation(seed, costs, leverage, cd_loss, cd_win, kill, max_bars):
     bars = random_bars(seed, n=300)
     signals = random_signals(bars, seed)
     result = simulate_bracket(
         bars, signals, costs, leverage=leverage,
-        cooldown_win=cd_win, cooldown_loss=cd_loss, kill_drawdown=kill,
+        cooldown_win=cd_win, cooldown_loss=cd_loss, kill_drawdown=kill, max_bars=max_bars,
     )  # fmt: skip
     equity, trades, killed_bar = reference_simulation(
-        bars, signals, costs, leverage, cd_win, cd_loss, kill
+        bars, signals, costs, leverage, cd_win, cd_loss, kill, max_bars
     )
 
     np.testing.assert_allclose(result.ledger["equity"].to_numpy(), equity, rtol=1e-9, atol=1e-12)
@@ -388,10 +396,11 @@ def test_reference_scenarios_cover_every_exit_reason() -> None:
         bars = random_bars(seed, n=300)
         signals = random_signals(bars, seed)
         for scenario in SCENARIOS:
-            costs, leverage, cd_loss, cd_win, kill = scenario.values
+            costs, leverage, cd_loss, cd_win, kill, max_bars = scenario.values
             result = simulate_bracket(
                 bars, signals, costs, leverage=leverage,
                 cooldown_win=cd_win, cooldown_loss=cd_loss, kill_drawdown=kill,
+                max_bars=max_bars,
             )  # fmt: skip
             seen |= set(result.trades["exit_reason"])
-    assert seen == {"stop", "target", "kill", "liquidated", "open"}
+    assert seen == {"stop", "target", "kill", "liquidated", "open", "time"}
