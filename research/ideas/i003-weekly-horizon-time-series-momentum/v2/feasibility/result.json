@@ -1,0 +1,165 @@
+{
+  "idea": "i003",
+  "version": 2,
+  "stage": "feasibility",
+  "verdict": "FAIL",
+  "reasons": [
+    "entry test: share of (exit, symbol) cells profitable 0.45 (needs >= 70%)"
+  ],
+  "checks": [
+    {
+      "name": "entry test: share of (exit, symbol) cells profitable",
+      "value": 0.45,
+      "limit": ">= 70%",
+      "passed": false
+    },
+    {
+      "name": "core system: median Sharpe across symbols",
+      "value": 0.9471764697147205,
+      "limit": ">= 0.3",
+      "passed": true
+    },
+    {
+      "name": "core system: share of symbols with Sharpe > 0",
+      "value": 0.9,
+      "limit": ">= 60%",
+      "passed": true
+    },
+    {
+      "name": "core system: median closed trades per symbol",
+      "value": 75.0,
+      "limit": ">= 30",
+      "passed": true
+    },
+    {
+      "name": "monkey test: share of random monkeys beaten",
+      "value": 1.0,
+      "limit": ">= 90%",
+      "passed": true
+    },
+    {
+      "name": "limited optimisation: share of grid combinations profitable",
+      "value": 1.0,
+      "limit": ">= 70%",
+      "passed": true
+    }
+  ],
+  "metrics": {
+    "median Sharpe at the chosen parameters": 0.9471764697147205,
+    "plateau score of the chosen cell": 0.9987979871358027,
+    "monkey median Sharpe (median run)": 0.4797524712083865,
+    "median CAGR at the chosen parameters": 0.17756194140136272,
+    "worst drawdown at the chosen parameters": -0.4876050790313837
+  },
+  "trials": 5,
+  "notes": [
+    "Entry test by exit:\n\n| exit | profitable | trades | win_rate | avg_trade |\n|---|---|---|---|---|\n| 5 bars | 0.2 | 619 | 0.445 | 0.002 |\n| 10 bars | 0.5 | 493 | 0.436 | 0.008 |\n| 20 bars | 0.7 | 384 | 0.5 | 0.047 |\n| 2/4 ATR bracket | 0.4 | 332 | 0.394 | 0.008 |",
+    "Long against short (chosen parameters):\n\n| index | trades | win_rate | avg_return | sum_return | median_bars |\n|---|---|---|---|---|---|\n| all | 756.0 | 0.347 | 0.013 | 9.827 | 3.0 |\n| long | 756.0 | 0.347 | 0.013 | 9.827 | 3.0 |\n| short | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |",
+    "Regimes (chosen parameters):\n\n| kind | regime | share_of_time | median_sharpe | mean_net |\n|---|---|---|---|---|\n| trend | neither | 0.206 | 0.117 | 0.0 |\n| trend | ranging (ADX<=20) | 0.272 | 0.394 | 0.0 |\n| trend | trending (ADX>=25) | 0.508 | 1.614 | 0.001 |\n| trend | warm-up | 0.014 | 0.0 | 0.0 |\n| volatility | high vol | 0.331 | -0.88 | -0.001 |\n| volatility | low vol | 0.331 | 2.741 | 0.002 |\n| volatility | mid vol | 0.331 | 1.001 | 0.001 |\n| volatility | warm-up | 0.007 | 0.0 | 0.0 |",
+    "Excursions (MAE/MFE):\n\n| index | median_mae | p75_mae | median_mfe | p75_mfe | median_mae_atr | median_mfe_atr |\n|---|---|---|---|---|---|---|\n| winners | 0.02 | 0.044 | 0.207 | 0.566 | 0.327 | 2.918 |\n| losers | 0.061 | 0.107 | 0.023 | 0.055 | 1.025 | 0.377 |"
+  ],
+  "report": "reports/research/i003/v2/feasibility/report.html",
+  "provenance": {
+    "created": "2026-10-02T16:13:38Z",
+    "commit": "ec9474071ee82485dbbff97046729d45170fa61c",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "178a7b2614a0a56c",
+    "spec_hash": "57372159bea4dadc",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1d",
+        "start": "2019-09-08 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 2062,
+        "sha": "f126f8bd1d428254"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1d",
+        "start": "2019-11-27 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1982,
+        "sha": "3f56db2f53f8b4ca"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1d",
+        "start": "2020-09-14 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1690,
+        "sha": "29bc2cef3542034a"
+      },
+      {
+        "symbol": "BNB",
+        "timeframe": "1d",
+        "start": "2020-02-10 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1907,
+        "sha": "7633bc644b960f47"
+      },
+      {
+        "symbol": "XRP",
+        "timeframe": "1d",
+        "start": "2020-01-06 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1942,
+        "sha": "bf4e229044a652cf"
+      },
+      {
+        "symbol": "DOGE",
+        "timeframe": "1d",
+        "start": "2020-07-10 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1756,
+        "sha": "a18df5e2737fc95e"
+      },
+      {
+        "symbol": "ADA",
+        "timeframe": "1d",
+        "start": "2020-01-31 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1917,
+        "sha": "16e15e86c47c7513"
+      },
+      {
+        "symbol": "AVAX",
+        "timeframe": "1d",
+        "start": "2020-09-23 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1681,
+        "sha": "9ae89bb1cabc8ecb"
+      },
+      {
+        "symbol": "LINK",
+        "timeframe": "1d",
+        "start": "2020-01-17 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1931,
+        "sha": "be4816354b9d0a85"
+      },
+      {
+        "symbol": "LTC",
+        "timeframe": "1d",
+        "start": "2020-01-09 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1939,
+        "sha": "e54fe7f531a2a19f"
+      }
+    ]
+  },
+  "chosen": {
+    "strategy.lookback": 28
+  },
+  "chosen_spec": {
+    "type": "vol_target",
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0,
+    "strategy": {
+      "type": "momentum",
+      "lookback": 28,
+      "allow_short": false
+    }
+  }
+}
