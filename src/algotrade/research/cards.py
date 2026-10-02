@@ -39,6 +39,7 @@ HORIZONS = ("hours", "days", "weeks", "months")
 SECTIONS = ("Hypothesis", "Why it should work", "Rules", "Falsified if")
 IDEA_ID = re.compile(r"^i\d{3}$")
 STAMP_KEYS = frozenset({"id", "version", "registered", "parent", "revision_reason"})
+CRLF, LF = b"\r\n", b"\n"
 
 
 class CardError(ValueError):
@@ -123,7 +124,9 @@ def read_card(path: Path) -> Card:
 
 
 def card_hash(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    """Hash of the card's text; line endings are normalised so git's CRLF handling is harmless."""
+
+    return hashlib.sha256(path.read_bytes().replace(CRLF, LF)).hexdigest()[:16]
 
 
 def validate(card: Card, criteria: Criteria) -> list[str]:

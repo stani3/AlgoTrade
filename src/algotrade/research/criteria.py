@@ -29,7 +29,7 @@ class Criteria:
 
 
 def load_criteria(path: Path) -> Criteria:
-    raw = path.read_bytes()
+    raw = path.read_bytes().replace(b"\r\n", b"\n")  # same hash whatever git's line endings
     return Criteria(values=yaml.safe_load(raw) or {}, hash=hashlib.sha256(raw).hexdigest()[:16])
 
 

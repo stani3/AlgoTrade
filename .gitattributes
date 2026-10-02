@@ -1,0 +1,3 @@
+# Research records are hashed and diffed; keep them byte-stable across platforms.
+research/** text eol=lf
+research/fingerprints/*.parquet binary

@@ -24,6 +24,7 @@ from algotrade.research.criteria import (
     load_criteria,
 )
 
+LF, CRLF = chr(10), chr(13) + chr(10)
 CRITERIA = load_criteria(REPO / "research" / "criteria.yaml")
 
 
@@ -143,11 +144,21 @@ def test_parse_errors() -> None:
 
 def test_read_card_and_hash(tmp_path) -> None:
     path = tmp_path / "idea.md"
-    path.write_text(draft().render(), encoding="utf-8")
+    path.write_text(draft().render(), encoding="utf-8", newline=LF)
     assert read_card(path).path == path
     before = card_hash(path)
+    path.write_text(draft().render(), encoding="utf-8", newline=CRLF)  # git checkout on Windows
+    assert card_hash(path) == before
     path.write_text(draft().render() + " ", encoding="utf-8")
     assert card_hash(path) != before
+
+
+def test_criteria_hash_ignores_line_endings(tmp_path) -> None:
+    path = tmp_path / "c.yaml"
+    path.write_text("a: 1" + LF + "b: 2" + LF, encoding="utf-8", newline=LF)
+    unix = load_criteria(path).hash
+    path.write_text("a: 1" + LF + "b: 2" + LF, encoding="utf-8", newline=CRLF)
+    assert load_criteria(path).hash == unix
 
 
 def test_slugify() -> None:
