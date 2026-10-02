@@ -9,6 +9,7 @@ Configurations evaluated so far: **221** (all count towards the deflated Sharpe 
 | Idea | Title | Family | Inputs | Horizon | TF | Source | Versions | Status | Why it stopped | Nearest fingerprints |
 |---|---|---|---|---|---|---|---|---|---|---|
 | i001 | Book breakout + RSI + ATR bracket (pre-journal) | breakout | price | days | 1d, 4h | - | 2 | failed:feasibility | best median Sharpe in the grid 0.228 (needs >= 0.3) | - |
+| i002 | Liquidation shock fade | mean_reversion | price | days | 4h | S24 | 1 | registered | - | - |
 
 ## Screened before the journal (not gated)
 
@@ -44,4 +45,4 @@ failed a gate, so registering a catalogue rule (or a blend of them) is allowed.
 
 ## Sources already used
 
-- none yet
+- S24: i002
