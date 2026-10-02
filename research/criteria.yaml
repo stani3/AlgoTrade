@@ -33,6 +33,7 @@ dedup:
   min_differs_from_chars: 30
 
 feasibility:
+  entry_scoring: fixed
   entry_exit_bars: [5, 10, 20]
   entry_stop_atr: 2.0
   entry_target_atr: 4.0
