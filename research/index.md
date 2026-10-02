@@ -10,6 +10,7 @@ Configurations evaluated so far: **239** (all count towards the deflated Sharpe 
 |---|---|---|---|---|---|---|---|---|---|---|
 | i001 | Book breakout + RSI + ATR bracket (pre-journal) | breakout | price | days | 1d, 4h | - | 2 | failed:feasibility | best median Sharpe in the grid 0.228 (needs >= 0.3) | - |
 | i002 | Liquidation shock fade | mean_reversion | price | days | 4h | S24 | 2 | failed:feasibility | entry test: share of (exit, symbol) cells profitable 0.6 (needs >= 70%) | screened bollinger_reversion (4h, vol target 25%) (0.22), screened rsi_reversion (4h, vol target 25%) (0.20) |
+| i003 | Weekly-horizon time-series momentum | trend | price | weeks | 1d | S02 | 1 | registered | - | - |
 
 ## Screened before the journal (not gated)
 
@@ -45,4 +46,5 @@ failed a gate, so registering a catalogue rule (or a blend of them) is allowed.
 
 ## Sources already used
 
+- S02: i003
 - S24: i002
