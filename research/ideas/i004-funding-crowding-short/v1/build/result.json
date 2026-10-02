@@ -1,0 +1,183 @@
+{
+  "idea": "i004",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i004_funding_crowding_short)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i004_funding_crowding_short)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i004_funding_crowding_short)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened rsi_reversion (1d): correlation 0.24, exposure difference 0.80"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T19:15:00Z",
+    "commit": "2a8b08959f2eab110b6ba7ccde22607b4693ba51",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "1242c7e9a2436fc1",
+    "spec_hash": "88f71d30a48265b0",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1d",
+        "start": "2019-09-08 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 2062,
+        "sha": "f126f8bd1d428254"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1d",
+        "start": "2019-11-27 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1982,
+        "sha": "3f56db2f53f8b4ca"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1d",
+        "start": "2020-09-14 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1690,
+        "sha": "29bc2cef3542034a"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "84efd7b2174d26a9_1d",
+      "label": "screened rsi_reversion (1d)",
+      "correlation": 0.23911368142263045,
+      "difference": 0.799063737846597,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "rsi_reversion",
+        "length": 14,
+        "lower": 30.0,
+        "upper": 70.0,
+        "exit_level": 50.0,
+        "trend_filter": 0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "5825ff8654303590_1d",
+      "label": "screened rsi_reversion (1d, vol target 25%)",
+      "correlation": 0.22107220385954357,
+      "difference": 0.8382800546858921,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "rsi_reversion",
+          "length": 14,
+          "lower": 30.0,
+          "upper": 70.0,
+          "exit_level": 50.0,
+          "trend_filter": 0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "6b614b401f22f265_1d",
+      "label": "screened bollinger_reversion (1d)",
+      "correlation": 0.19859931199718275,
+      "difference": 0.8491484184914841,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "bollinger_reversion",
+        "length": 20,
+        "mult": 2.0,
+        "trend_filter": 0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "0d8fbb1937ac499d_1d",
+      "label": "screened funding_carry (1d)",
+      "correlation": 0.19276167754438975,
+      "difference": 0.8092035947568886,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "funding_carry",
+        "span_days": 30.0,
+        "vol_days": 25.0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "aa7a5ba9475f4fe1_1d",
+      "label": "screened bollinger_reversion (1d, vol target 25%)",
+      "correlation": 0.18110346334422422,
+      "difference": 0.8715069512383601,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_reversion",
+          "length": 20,
+          "mult": 2.0,
+          "trend_filter": 0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i004_funding_crowding_short.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 39%]\n........................................................................ [ 79%]\n.....................................                                    [100%]\n181 passed in 12.68s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i004_funding_crowding_short.py"
+  ]
+}

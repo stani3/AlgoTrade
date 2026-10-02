@@ -1,0 +1,25 @@
+{
+  "key": "88f71d30a48265b0_1d",
+  "spec": {
+    "type": "i004_funding_crowding_short",
+    "funding_days": 7,
+    "quantile": 0.8,
+    "hold_bars": 7,
+    "history_days": 365,
+    "exit_quantile": 0.5,
+    "neutral_daily_funding": 0.0003,
+    "stop_atr": 3.0
+  },
+  "spec_hash": "88f71d30a48265b0",
+  "timeframe": "1d",
+  "source": "idea",
+  "idea": "i004",
+  "version": 1,
+  "label": "i004 v1 Funding-crowding short",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

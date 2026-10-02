@@ -11,7 +11,7 @@ Configurations evaluated so far: **249** (all count towards the deflated Sharpe 
 | i001 | Book breakout + RSI + ATR bracket (pre-journal) | breakout | price | days | 1d, 4h | - | 2 | failed:feasibility | best median Sharpe in the grid 0.228 (needs >= 0.3) | - |
 | i002 | Liquidation shock fade | mean_reversion | price | days | 4h | S24 | 2 | failed:feasibility | entry test: share of (exit, symbol) cells profitable 0.6 (needs >= 70%) | screened bollinger_reversion (4h, vol target 25%) (0.22), screened rsi_reversion (4h, vol target 25%) (0.20) |
 | i003 | Weekly-horizon time-series momentum | trend | price | weeks | 1d | S02 | 2 | failed:feasibility | entry test: share of (exit, symbol) cells profitable 0.45 (needs >= 70%) | screened bollinger_breakout (1d, vol target 25%) (0.62), screened spec:carver_trend (4h, vol target 25%) (0.59) |
-| i004 | Funding-crowding short | mean_reversion | funding, price | days | 1d | S25 | 1 | registered | - | - |
+| i004 | Funding-crowding short | mean_reversion | funding, price | days | 1d | S25 | 1 | passed:build | - | screened rsi_reversion (1d) (0.24), screened rsi_reversion (1d, vol target 25%) (0.22) |
 
 ## Screened before the journal (not gated)
 
