@@ -17,20 +17,39 @@ OHLCV_COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
 FUNDING_COLUMNS = ["timestamp", "funding_rate"]
 
 
+QUOTES = ("USDT", "USDC")
+
+
 @dataclass(frozen=True)
 class MarketId:
-    """A USDT-margined linear perpetual on a given exchange."""
+    """A linear perpetual settled in ``quote`` (USDT by default, or USDC) on an exchange."""
 
     exchange: str
     base: str
+    quote: str = "USDT"
 
     @property
     def ccxt_symbol(self) -> str:
-        return f"{self.base}/USDT:USDT"
+        return f"{self.base}/{self.quote}:{self.quote}"
 
     @property
     def name(self) -> str:
-        return f"{self.base}USDT"
+        return f"{self.base}{self.quote}"
+
+
+def list_perpetuals(exchange: ccxt.Exchange, quote: str = "USDT") -> list[str]:
+    """Base assets of every active linear perpetual settled in ``quote``, oldest listing first
+    where the exchange says when it listed (Binance's ``onboardDate``)."""
+
+    markets = exchange.load_markets()
+    found = [
+        market
+        for market in markets.values()
+        if market.get("swap") and market.get("linear") and market.get("active")
+        and market.get("settle") == quote and market.get("quote") == quote
+    ]  # fmt: skip
+    found.sort(key=lambda m: (int((m.get("info") or {}).get("onboardDate") or 0), m["base"]))
+    return [market["base"] for market in found]
 
 
 def make_exchange(exchange_id: str) -> ccxt.Exchange:

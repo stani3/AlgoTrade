@@ -33,7 +33,8 @@ def main(args: argparse.Namespace) -> None:
     costs = cost_model(args.exchange, args.fee_bps, args.slippage_bps)
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
     universe = {
-        s: load_bars(args.exchange, s, args.timeframe, args.start, args.end) for s in symbols
+        s: load_bars(args.exchange, s, args.timeframe, args.start, args.end, args.quote)
+        for s in symbols
     }
 
     summary, detail = {}, []
@@ -76,6 +77,9 @@ if __name__ == "__main__":
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("--exchange", choices=sorted(EXCHANGE_COSTS), default="binanceusdm")
+    parser.add_argument(
+        "--quote", choices=["USDT", "USDC"], default="USDT", help="Settlement currency"
+    )
     parser.add_argument("--symbols", default=DEFAULT_UNIVERSE)
     parser.add_argument("--timeframe", choices=["4h", "1d"], default="1d")
     parser.add_argument("--start")

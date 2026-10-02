@@ -95,7 +95,7 @@ def main(args: argparse.Namespace) -> None:
     costs = cost_model(args.exchange, args.fee_bps, args.slippage_bps, not args.no_funding)
     rows, curves, notes, reports = {}, {}, {}, []
     for base in args.symbols.split(","):
-        bars = load_bars(args.exchange, base, args.timeframe, args.start, args.end)
+        bars = load_bars(args.exchange, base, args.timeframe, args.start, args.end, args.quote)
         result = backtest(strategy, bars, costs, args.max_leverage)
         name = bars.attrs["symbol"]
         rows[name] = format_row(summarize(result))
@@ -166,6 +166,9 @@ if __name__ == "__main__":
     parser.add_argument("--vol-target", type=float, help="Wrap in VolTarget, e.g. 0.25 = 25%%/yr")
     parser.add_argument("--max-leverage", type=float, default=1.0)
     parser.add_argument("--exchange", choices=sorted(EXCHANGE_COSTS), default="binanceusdm")
+    parser.add_argument(
+        "--quote", choices=["USDT", "USDC"], default="USDT", help="Settlement currency"
+    )
     parser.add_argument("--symbols", default="BTC,ETH")
     parser.add_argument("--timeframe", choices=["4h", "1d"], default="1d")
     parser.add_argument("--start", help="Inclusive start date, e.g. 2021-01-01")

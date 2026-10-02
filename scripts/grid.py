@@ -89,7 +89,8 @@ def main(args: argparse.Namespace) -> None:
     costs = cost_model(args.exchange, args.fee_bps, args.slippage_bps)
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
     universe = {
-        s: load_bars(args.exchange, s, args.timeframe, args.start, args.end) for s in symbols
+        s: load_bars(args.exchange, s, args.timeframe, args.start, args.end, args.quote)
+        for s in symbols
     }
 
     board = run_grid(base, grid, universe, costs, args.max_leverage)
@@ -131,6 +132,9 @@ if __name__ == "__main__":
         "--grid", action="append", default=[], help="key=v1,v2,... (2-3 keys for heatmaps)"
     )
     parser.add_argument("--exchange", choices=sorted(EXCHANGE_COSTS), default="binanceusdm")
+    parser.add_argument(
+        "--quote", choices=["USDT", "USDC"], default="USDT", help="Settlement currency"
+    )
     parser.add_argument("--symbols", default=DEFAULT_UNIVERSE)
     parser.add_argument("--timeframe", choices=["4h", "1d"], default="4h")
     parser.add_argument("--start")

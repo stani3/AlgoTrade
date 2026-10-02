@@ -22,3 +22,9 @@ def test_daily_bar_collects_its_three_settlements() -> None:
         "2024-01-01 08:00", "2024-01-01 16:00", "2024-01-02 00:00", "2024-01-02 08:00"
     )
     assert align_funding(bars, "1d", settlements).tolist() == [3, 1]
+
+
+def test_no_funding_history_means_zero_funding() -> None:
+    bars = pd.date_range("2024-01-01", periods=3, freq="4h", tz="UTC")
+    empty = pd.DataFrame(columns=["timestamp", "funding_rate"])
+    assert align_funding(bars, "4h", empty).tolist() == [0.0, 0.0, 0.0]

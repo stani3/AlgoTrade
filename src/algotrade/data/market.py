@@ -25,15 +25,18 @@ def align_funding(bar_open: pd.DatetimeIndex, timeframe: str, funding: pd.DataFr
     return per_bar.reindex(bar_open, fill_value=0.0).rename("funding_rate")
 
 
-def load_market(root: Path, exchange: str, base: str, timeframe: str) -> pd.DataFrame:
+def load_market(
+    root: Path, exchange: str, base: str, timeframe: str, quote: str = "USDT"
+) -> pd.DataFrame:
     """Return OHLCV bars indexed by bar-open time (UTC) with a ``funding_rate`` column."""
 
-    market = MarketId(exchange=exchange, base=base.upper())
+    market = MarketId(exchange=exchange, base=base.upper(), quote=quote.upper())
     path = ohlcv_path(root, market, timeframe)
     if not path.exists():
         raise FileNotFoundError(
             f"No {timeframe} data for {market.name} on {exchange}. "
-            f"Run: python -m scripts.download_data --exchange {exchange} --symbols {market.base}"
+            f"Run: python -m scripts.download_data --exchange {exchange} --quote {market.quote} "
+            f"--symbols {market.base}"
         )
     bars = pd.read_parquet(path).set_index("timestamp").sort_index()
     fpath = funding_path(root, market)

@@ -27,9 +27,14 @@ def cost_model(
 
 
 def load_bars(
-    exchange: str, base: str, timeframe: str, start: str | None = None, end: str | None = None
+    exchange: str,
+    base: str,
+    timeframe: str,
+    start: str | None = None,
+    end: str | None = None,
+    quote: str = "USDT",
 ) -> pd.DataFrame:
-    bars = load_market(load_settings().data_paths.raw, exchange, base.strip(), timeframe)
+    bars = load_market(load_settings().data_paths.raw, exchange, base.strip(), timeframe, quote)
     if start:
         bars = bars[bars.index >= pd.Timestamp(start, tz="UTC")]
     if end:
