@@ -18,3 +18,5 @@ data/processed/**
 !data/**/.gitkeep
 reports/**
 !reports/.gitkeep
+
+.coverage

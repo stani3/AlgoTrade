@@ -83,6 +83,31 @@ Runs every rule at its default parameters (plus every spec file) over all 10 sym
 median Sharpe across symbols, so one lucky coin cannot top the table. Per-symbol detail goes to
 `reports/scan.csv`.
 
+### Bracket strategies (stops and profit targets)
+
+`breakout_bracket` (spec: `specs/breakout_bracket.json`) runs on a separate bar-by-bar simulator,
+`src/algotrade/backtest/bracket.py`, because its exits happen *inside* a bar and its rules depend on
+earlier trades:
+
+- Long when the close is the highest close of `lookback` bars and RSI(`rsi_length`) > `rsi_level`;
+  short on the mirror image. Entry at the **next bar's open**; opposite signals during a trade are
+  ignored.
+- Stop `stop_atr` x ATR and target `target_atr` x ATR from the fill (ATR read on the signal bar).
+  A stop or target touched intrabar fills at that level; a gap fills at the open; if one bar
+  touches both, the stop is assumed first. Targets are limit orders and pay no slippage.
+- After a winning trade wait `cooldown_win` bars, after a loser (after costs) `cooldown_loss` bars.
+- Kill switch: once equity is `kill_drawdown` below its peak the strategy stops trading for good.
+
+Explore its parameters with the grid script. It prints the total number of trials and saves a CSV
+plus median-Sharpe heatmaps (look for a broad plateau, not a single bright cell):
+
+```powershell
+python -m scripts.grid --strategy breakout_bracket --grid stop_atr=1,1.5,2,3,4 --grid target_atr=2,3,4,6,8 --grid atr_length=14,30 --timeframe 4h
+```
+
+The simulator is tested against an independent reference implementation on random markets and
+has 100% line and branch coverage (`NUMBA_DISABLE_JIT=1 coverage run --branch -m pytest`).
+
 ### Adding a rule
 
 Subclass `Strategy` as a frozen dataclass in `src/algotrade/strategies/`, implement

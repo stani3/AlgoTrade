@@ -1,0 +1,3 @@
+{"type": "breakout_bracket", "lookback": 48, "rsi_length": 30, "rsi_level": 50,
+ "atr_length": 14, "stop_atr": 2.0, "target_atr": 4.0,
+ "cooldown_win": 20, "cooldown_loss": 5, "kill_drawdown": 0.5}

@@ -17,7 +17,7 @@ import pandas as pd
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.metrics import summarize
 from algotrade.backtest.runner import backtest, cost_model, load_bars
-from algotrade.strategies import RULES, Strategy, VolTarget, from_spec
+from algotrade.strategies import RULES, BracketStrategy, Strategy, VolTarget, from_spec
 from scripts.download_data import DEFAULT_UNIVERSE
 
 
@@ -50,7 +50,7 @@ def main(args: argparse.Namespace) -> None:
 
     summary, detail = {}, []
     for label, strategy in candidates(args.specs).items():
-        if args.vol_target and not isinstance(strategy, VolTarget):
+        if args.vol_target and not isinstance(strategy, (VolTarget, BracketStrategy)):
             strategy = VolTarget(strategy, annual_vol=args.vol_target)
         stats = {}
         for symbol, bars in universe.items():

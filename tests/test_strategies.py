@@ -9,6 +9,7 @@ from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.strategies import (
     EWMAC,
     RULES,
+    BracketStrategy,
     CarverBreakout,
     Combine,
     DonchianBreakout,
@@ -34,7 +35,7 @@ CASES = (
         TrendFilter(RSIReversion(), length=100),
         Combine((EWMAC(), CarverBreakout(), FundingCarry()), weights=(2, 1, 1), multiplier=1.3),
     ]
-    + [from_spec(path) for path in SPECS]
+    + [s for s in map(from_spec, SPECS) if not isinstance(s, BracketStrategy)]
 )
 # Filtered/long-only specs may legitimately sit flat on the (down-trending) synthetic bars.
 MUST_TRADE = [cls() for cls in RULES]

@@ -6,7 +6,7 @@ import pandas as pd
 
 from algotrade.config import load_settings
 from algotrade.data.market import load_market
-from algotrade.strategies import Strategy
+from algotrade.strategies import BracketStrategy, Strategy
 
 from .costs import EXCHANGE_COSTS, CostModel
 from .engine import BacktestResult, run_backtest
@@ -40,4 +40,7 @@ def load_bars(
 def backtest(
     strategy: Strategy, bars: pd.DataFrame, costs: CostModel, max_leverage: float = 1.0
 ) -> BacktestResult:
+    """Run any strategy; bracket strategies go through the intrabar simulator."""
+    if isinstance(strategy, BracketStrategy):
+        return strategy.simulate(bars, costs, leverage=max_leverage)
     return run_backtest(bars, strategy.target_position(bars), costs, max_leverage=max_leverage)

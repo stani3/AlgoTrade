@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 from .base import Strategy
+from .bracket import BreakoutBracket
 from .breakout import BollingerBreakout, DonchianBreakout, KeltnerBreakout
 from .carver import EWMAC, CarverBreakout, FundingCarry
 from .ma_crossover import MovingAverageCrossover
@@ -40,8 +41,10 @@ RULES: tuple[type[Strategy], ...] = (
     FundingCarry,
 )
 WRAPPERS: tuple[type[Strategy], ...] = (VolTarget, TrendFilter, Combine)
+# Bracket strategies run on the intrabar simulator and cannot be wrapped.
+BRACKETS: tuple[type[Strategy], ...] = (BreakoutBracket,)
 
-STRATEGIES: dict[str, type[Strategy]] = {cls.name: cls for cls in RULES + WRAPPERS}
+STRATEGIES: dict[str, type[Strategy]] = {cls.name: cls for cls in RULES + WRAPPERS + BRACKETS}
 
 
 def from_spec(spec: dict | str | Path) -> Strategy:

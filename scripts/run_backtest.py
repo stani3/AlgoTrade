@@ -18,7 +18,14 @@ from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.engine import run_backtest
 from algotrade.backtest.metrics import summarize
 from algotrade.backtest.runner import backtest, cost_model, load_bars
-from algotrade.strategies import STRATEGIES, Strategy, VolTarget, from_spec, to_spec
+from algotrade.strategies import (
+    STRATEGIES,
+    BracketStrategy,
+    Strategy,
+    VolTarget,
+    from_spec,
+    to_spec,
+)
 
 COLUMNS = {
     "cagr": "{:+.1%}",
@@ -52,6 +59,8 @@ def build_strategy(args: argparse.Namespace) -> Strategy:
             key, _, raw = pair.partition("=")
             params[key] = parse_value(raw)
         strategy = STRATEGIES[args.strategy](**params)
+    if args.vol_target and isinstance(strategy, BracketStrategy):
+        raise SystemExit(f"{strategy.name} sizes its own trades; drop --vol-target")
     if args.vol_target and not isinstance(strategy, VolTarget):
         strategy = VolTarget(strategy, annual_vol=args.vol_target, max_leverage=args.max_leverage)
     return strategy
@@ -81,13 +90,19 @@ def plot_equity(curves: dict[str, pd.Series], output: Path, title: str) -> None:
 def main(args: argparse.Namespace) -> None:
     strategy = build_strategy(args)
     costs = cost_model(args.exchange, args.fee_bps, args.slippage_bps, not args.no_funding)
-    rows, curves = {}, {}
+    rows, curves, notes = {}, {}, {}
     for base in args.symbols.split(","):
         bars = load_bars(args.exchange, base, args.timeframe, args.start, args.end)
         result = backtest(strategy, bars, costs, args.max_leverage)
         name = bars.attrs["symbol"]
         rows[name] = format_row(summarize(result))
         curves[name] = result.equity
+        if "exit_reason" in result.trades:
+            reasons = result.trades["exit_reason"].value_counts().to_dict()
+            killed = result.meta.get("killed_at")
+            notes[name] = f"exits {reasons}" + (
+                f" | kill switch at {killed:%Y-%m-%d}" if killed else ""
+            )
         if not args.no_benchmark:
             hold = run_backtest(bars, pd.Series(1.0, index=bars.index), costs)
             rows[f"  {name} buy&hold"] = format_row(summarize(hold))
@@ -99,6 +114,8 @@ def main(args: argparse.Namespace) -> None:
     )
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(pd.DataFrame(rows).T.to_string())
+    for name, note in notes.items():
+        print(f"{name}: {note}")
     if args.plot:
         plot_equity(curves, args.plot, f"{strategy} ({args.timeframe}, net of costs)")
         print(f"Saved chart to {args.plot}")
