@@ -236,6 +236,17 @@ trading (NautilusTrader, started by the user) is used to measure execution, its 
 compared with the cost model. It needs `incubation.min_days` and `min_trades` before it can pass.
 Going live with real money is never part of the pipeline.
 
+Paper trading runs our own strategy code inside NautilusTrader (`src/algotrade/live/`): the
+adapter reproduces our engine and bracket simulator trade for trade (`tests/test_live_parity.py`),
+and the node can only be configured for the Binance or Bybit testnet:
+
+```powershell
+pip install -e .[live]
+python -m scripts.paper_trade i002 --parity    # adapter vs our engine on recent real bars
+python -m scripts.paper_trade i002 --dry-run   # what would run; connects nothing
+python -m scripts.paper_trade i002             # you start it; testnet keys from .env
+```
+
 `research/index.md` is the readable list of every idea and why it stopped.
 
 ## Tests

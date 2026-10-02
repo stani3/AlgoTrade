@@ -18,12 +18,15 @@ always the user's own step, outside the pipeline.
 ## 1. Parity
 
 ```bash
-python -m pytest -q tests/test_live_parity.py
+python -m pytest -q tests/test_live_parity.py tests/test_live_node.py
+python -m scripts.paper_trade <id> --parity
 ```
 
-The Nautilus adapter must reproduce our engine's and bracket simulator's trades on historical
-bars before anything runs on testnet. If parity fails, stop and report: never paper-trade a
-strategy whose live code disagrees with the code that was validated.
+The NautilusTrader adapter must reproduce our engine and bracket simulator: exactly on the
+synthetic test markets, and within 1% equity on the strategy's own recent real bars (real bars
+have small gaps between one close and the next open, which move bracket fills slightly). If
+parity fails, stop and report: never paper-trade a strategy whose live code disagrees with the
+code that was validated.
 
 ## 2. Start the record
 
@@ -39,10 +42,12 @@ Testnet API keys are the user's: they put them in `.env` themselves (see `script
 for the variable names) and start the long-running node:
 
 ```bash
-python -m scripts.paper_trade <id>
+python -m scripts.paper_trade <id> --dry-run   # you may run this: it shows the set-up, connects nothing
+python -m scripts.paper_trade <id>             # the user runs this one
 ```
 
-It refuses to run against anything but testnet. Never ask for, read, write or echo API keys,
+It refuses to run until incubation has started and the testnet keys are set, and it cannot
+point at anything but a testnet. Each symbol trades an equal share of the testnet account. Never ask for, read, write or echo API keys,
 and never start the node yourself. Fills are logged to
 `research/ideas/<id>-<slug>/v<n>/incubation/fills.csv`.
 
