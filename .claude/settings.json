@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "deny": [
+    "ask": [
       "Edit(/research/criteria.yaml)"
     ]
   }
