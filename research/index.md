@@ -9,7 +9,7 @@ Configurations evaluated so far: **230** (all count towards the deflated Sharpe 
 | Idea | Title | Family | Inputs | Horizon | TF | Source | Versions | Status | Why it stopped | Nearest fingerprints |
 |---|---|---|---|---|---|---|---|---|---|---|
 | i001 | Book breakout + RSI + ATR bracket (pre-journal) | breakout | price | days | 1d, 4h | - | 2 | failed:feasibility | best median Sharpe in the grid 0.228 (needs >= 0.3) | - |
-| i002 | Liquidation shock fade | mean_reversion | price | days | 4h | S24 | 1 | failed:feasibility | entry test: share of (exit, symbol) cells profitable 0.025 (needs >= 70%); core system: median Sharpe across symbols -0.292 (needs >= 0.3); core system: share of symbols with Sharpe > 0 0.1 (needs >= 60%); monkey test: share of random monkeys beaten 0.337 (needs >= 90%); limited optimisation: share of grid combinations profitable 0 (needs >= 70%) | screened bollinger_reversion (4h, vol target 25%) (0.30), screened rsi_reversion (4h, vol target 25%) (0.27) |
+| i002 | Liquidation shock fade | mean_reversion | price | days | 4h | S24 | 2 | registered | - | - |
 
 ## Screened before the journal (not gated)
 
