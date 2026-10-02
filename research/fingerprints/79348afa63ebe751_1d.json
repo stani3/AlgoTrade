@@ -1,0 +1,18 @@
+{
+  "key": "79348afa63ebe751_1d",
+  "spec": {
+    "type": "donchian_breakout",
+    "entry": 20,
+    "exit": 10,
+    "allow_short": true
+  },
+  "spec_hash": "79348afa63ebe751",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened donchian_breakout (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

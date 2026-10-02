@@ -1,0 +1,27 @@
+{
+  "key": "3fa95e2e7247d692_1d",
+  "spec": {
+    "type": "breakout_bracket",
+    "lookback": 48,
+    "rsi_length": 30,
+    "rsi_level": 50.0,
+    "atr_length": 14,
+    "stop_atr": 2.0,
+    "target_atr": 4.0,
+    "cooldown_win": 20,
+    "cooldown_loss": 5,
+    "kill_drawdown": 0.5,
+    "allow_short": true
+  },
+  "spec_hash": "3fa95e2e7247d692",
+  "timeframe": "1d",
+  "source": "idea",
+  "idea": "i001",
+  "version": 2,
+  "label": "i001 v2 Book breakout + RSI + ATR bracket",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

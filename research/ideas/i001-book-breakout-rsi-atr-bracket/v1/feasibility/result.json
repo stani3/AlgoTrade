@@ -1,0 +1,35 @@
+{
+  "idea": "i001",
+  "version": 1,
+  "stage": "feasibility",
+  "verdict": "FAIL",
+  "reasons": [
+    "best median Sharpe in the grid 0.248 (needs >= 0.3)"
+  ],
+  "checks": [
+    {
+      "name": "best median Sharpe in the grid",
+      "value": 0.2478829643849442,
+      "limit": ">= 0.3",
+      "passed": false
+    }
+  ],
+  "metrics": {
+    "combinations": 100,
+    "share of combinations with median Sharpe > 0": 0.22,
+    "share of symbols where the kill switch fired": 0.998
+  },
+  "trials": 100,
+  "notes": [
+    "Pre-journal grid search on the full history 2019-2026, holdout included (pre-journal)."
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T14:01:50Z",
+    "commit": "b0da49e08f2d3ce15f4c5d189ff26e38220ff656",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "205b9e9606442071",
+    "spec_hash": "3fa95e2e7247d692",
+    "data": []
+  }
+}

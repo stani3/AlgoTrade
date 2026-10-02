@@ -1,0 +1,20 @@
+{
+  "key": "fb3453064052a193_1d",
+  "spec": {
+    "type": "macd",
+    "fast": 12,
+    "slow": 26,
+    "signal": 9,
+    "mode": "signal",
+    "allow_short": true
+  },
+  "spec_hash": "fb3453064052a193",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened macd (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

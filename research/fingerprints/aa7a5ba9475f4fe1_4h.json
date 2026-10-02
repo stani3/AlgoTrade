@@ -1,0 +1,25 @@
+{
+  "key": "aa7a5ba9475f4fe1_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "bollinger_reversion",
+      "length": 20,
+      "mult": 2.0,
+      "trend_filter": 0,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "aa7a5ba9475f4fe1",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened bollinger_reversion (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

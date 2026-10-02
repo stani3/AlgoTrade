@@ -1,0 +1,15 @@
+{
+  "key": "154aac7e4151376e_1d",
+  "spec": {
+    "type": "buy_and_hold"
+  },
+  "spec_hash": "154aac7e4151376e",
+  "timeframe": "1d",
+  "source": "baseline",
+  "label": "buy & hold (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

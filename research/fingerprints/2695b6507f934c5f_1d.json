@@ -1,0 +1,47 @@
+{
+  "key": "2695b6507f934c5f_1d",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "combine",
+      "strategies": [
+        {
+          "type": "ewmac",
+          "fast": 16,
+          "slow": 64,
+          "vol_days": 25.0,
+          "allow_short": true
+        },
+        {
+          "type": "carver_breakout",
+          "lookback": 80,
+          "allow_short": true
+        },
+        {
+          "type": "funding_carry",
+          "span_days": 30,
+          "vol_days": 25.0,
+          "allow_short": true
+        }
+      ],
+      "weights": [
+        0.35,
+        0.35,
+        0.3
+      ],
+      "multiplier": 1.3
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "2695b6507f934c5f",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened spec:carver_trend_carry (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

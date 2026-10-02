@@ -1,0 +1,18 @@
+{
+  "key": "859d3664ea70b207_1d",
+  "spec": {
+    "type": "parabolic_sar",
+    "step": 0.02,
+    "max_step": 0.2,
+    "allow_short": true
+  },
+  "spec_hash": "859d3664ea70b207",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened parabolic_sar (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

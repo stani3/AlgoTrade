@@ -1,0 +1,24 @@
+{
+  "key": "4815c3a48d64c0d0_1d",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "parabolic_sar",
+      "step": 0.02,
+      "max_step": 0.2,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "4815c3a48d64c0d0",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened parabolic_sar (1d, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "key": "f83dcde050d36baf_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "carver_breakout",
+      "lookback": 80,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "f83dcde050d36baf",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened carver_breakout (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

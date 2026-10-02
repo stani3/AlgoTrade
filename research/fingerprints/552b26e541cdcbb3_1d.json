@@ -1,0 +1,19 @@
+{
+  "key": "552b26e541cdcbb3_1d",
+  "spec": {
+    "type": "ewmac",
+    "fast": 16,
+    "slow": 64,
+    "vol_days": 25.0,
+    "allow_short": true
+  },
+  "spec_hash": "552b26e541cdcbb3",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened ewmac (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

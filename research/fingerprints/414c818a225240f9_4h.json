@@ -1,0 +1,24 @@
+{
+  "key": "414c818a225240f9_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "keltner_breakout",
+      "length": 20,
+      "mult": 2.0,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "414c818a225240f9",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened keltner_breakout (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

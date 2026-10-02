@@ -1,0 +1,24 @@
+{
+  "key": "f4ceea6f2da07ca0_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "supertrend",
+      "length": 10,
+      "mult": 3.0,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "f4ceea6f2da07ca0",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened supertrend (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

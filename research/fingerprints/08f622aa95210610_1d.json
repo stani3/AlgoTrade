@@ -1,0 +1,19 @@
+{
+  "key": "08f622aa95210610_1d",
+  "spec": {
+    "type": "ma_crossover",
+    "fast": 20,
+    "slow": 100,
+    "kind": "sma",
+    "allow_short": true
+  },
+  "spec_hash": "08f622aa95210610",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened ma_crossover (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "key": "5825ff8654303590_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "rsi_reversion",
+      "length": 14,
+      "lower": 30.0,
+      "upper": 70.0,
+      "exit_level": 50.0,
+      "trend_filter": 0,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "5825ff8654303590",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened rsi_reversion (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

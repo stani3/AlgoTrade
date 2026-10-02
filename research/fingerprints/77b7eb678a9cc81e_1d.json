@@ -1,0 +1,25 @@
+{
+  "key": "77b7eb678a9cc81e_1d",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "ma_crossover",
+      "fast": 20,
+      "slow": 100,
+      "kind": "sma",
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "77b7eb678a9cc81e",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened ma_crossover (1d, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

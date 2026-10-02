@@ -1,0 +1,18 @@
+{
+  "key": "8b628cbce8af3dce_1d",
+  "spec": {
+    "type": "bollinger_breakout",
+    "length": 20,
+    "mult": 2.0,
+    "allow_short": true
+  },
+  "spec_hash": "8b628cbce8af3dce",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened bollinger_breakout (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

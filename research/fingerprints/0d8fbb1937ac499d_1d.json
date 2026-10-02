@@ -1,0 +1,18 @@
+{
+  "key": "0d8fbb1937ac499d_1d",
+  "spec": {
+    "type": "funding_carry",
+    "span_days": 30.0,
+    "vol_days": 25.0,
+    "allow_short": true
+  },
+  "spec_hash": "0d8fbb1937ac499d",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened funding_carry (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

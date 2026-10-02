@@ -1,0 +1,21 @@
+{
+  "key": "92123e190ef38f7d_1d",
+  "spec": {
+    "type": "rsi_reversion",
+    "length": 2,
+    "lower": 10,
+    "upper": 90,
+    "exit_level": 50,
+    "trend_filter": 200,
+    "allow_short": false
+  },
+  "spec_hash": "92123e190ef38f7d",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened spec:connors_rsi2 (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

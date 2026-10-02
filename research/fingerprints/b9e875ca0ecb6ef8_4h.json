@@ -1,0 +1,25 @@
+{
+  "key": "b9e875ca0ecb6ef8_4h",
+  "spec": {
+    "type": "vol_target",
+    "strategy": {
+      "type": "ewmac",
+      "fast": 16,
+      "slow": 64,
+      "vol_days": 25.0,
+      "allow_short": true
+    },
+    "annual_vol": 0.25,
+    "vol_days": 25.0,
+    "max_leverage": 1.0
+  },
+  "spec_hash": "b9e875ca0ecb6ef8",
+  "timeframe": "4h",
+  "source": "screen",
+  "label": "screened ewmac (4h, vol target 25%)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

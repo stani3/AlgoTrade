@@ -1,0 +1,17 @@
+{
+  "key": "1d9629ea97dc9951_1d",
+  "spec": {
+    "type": "momentum",
+    "lookback": 20,
+    "allow_short": true
+  },
+  "spec_hash": "1d9629ea97dc9951",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened momentum (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

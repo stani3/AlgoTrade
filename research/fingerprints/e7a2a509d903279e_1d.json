@@ -1,0 +1,19 @@
+{
+  "key": "e7a2a509d903279e_1d",
+  "spec": {
+    "type": "adx_trend",
+    "length": 14,
+    "threshold": 25.0,
+    "ma_length": 0,
+    "allow_short": true
+  },
+  "spec_hash": "e7a2a509d903279e",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened adx_trend (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}

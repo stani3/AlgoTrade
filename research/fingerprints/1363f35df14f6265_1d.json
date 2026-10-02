@@ -1,0 +1,17 @@
+{
+  "key": "1363f35df14f6265_1d",
+  "spec": {
+    "type": "carver_breakout",
+    "lookback": 80,
+    "allow_short": true
+  },
+  "spec_hash": "1363f35df14f6265",
+  "timeframe": "1d",
+  "source": "screen",
+  "label": "screened carver_breakout (1d)",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ]
+}
