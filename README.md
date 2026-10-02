@@ -42,6 +42,34 @@ Engine rules (`src/algotrade/backtest/engine.py`):
 - Funding is paid on the position held when each settlement happens (longs pay positive funding).
 - Metrics annualize over 365.25 days, because crypto trades every day.
 
+### Performance report
+
+Add `--report` to write a performance report in the style of Davey's *Building Winning
+Algorithmic Trading Systems* to `reports/<strategy>_<timeframe>/` (or `--report <folder>`):
+
+```powershell
+python -m scripts.run_backtest --spec specs/breakout_bracket.json --timeframe 4h --symbols BTC,ETH,SOL --report
+```
+
+`report.html` is self-contained (charts embedded). It has one section per market:
+
+- an equity curve against buy & hold, with drawdowns underneath;
+- the TradeStation-style trade analysis for all, long and short trades: net profit, profit
+  factor, percent profitable, average and largest winners/losers, consecutive wins/losses, bars
+  held;
+- account and drawdown statistics: CAGR, Sharpe, max drawdown in % and $, longest time
+  underwater, return on account, costs and funding paid;
+- annual and monthly returns;
+- Davey's Monte Carlo test: one year of trades resampled 2,500 times at 0.5x, 1x and 2x size, with
+  his goals (risk of ruin < 10%, median max drawdown < 40%, return / drawdown > 2) marked
+  pass/fail;
+- the full list of trades.
+
+`summary.csv` and `trades_<market>.csv` hold the same numbers for further analysis. Options:
+`--capital` (default 10,000), `--mc-runs`, `--mc-ruin` (default: losing 50% of the start).
+Trades are sized from current equity, so per-trade figures are a percentage of the equity at
+entry; money figures follow the compounded account and add up exactly to its net profit.
+
 ## Strategy catalogue
 
 | Family | Rules (`--strategy` name) |

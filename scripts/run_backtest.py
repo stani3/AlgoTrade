@@ -4,6 +4,7 @@ Examples:
     python -m scripts.run_backtest --strategy donchian_breakout --param entry=55 --param exit=20
     python -m scripts.run_backtest --strategy ewmac --vol-target 0.25 --symbols BTC,ETH,SOL
     python -m scripts.run_backtest --spec specs/carver_trend.json --timeframe 1d
+    python -m scripts.run_backtest --spec specs/breakout_bracket.json --timeframe 4h --report
 """
 
 from __future__ import annotations
@@ -17,6 +18,8 @@ import pandas as pd
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.engine import run_backtest
 from algotrade.backtest.metrics import summarize
+from algotrade.backtest.report import build_report
+from algotrade.backtest.report_html import write_report
 from algotrade.backtest.runner import backtest, cost_model, load_bars
 from algotrade.strategies import (
     STRATEGIES,
@@ -90,7 +93,7 @@ def plot_equity(curves: dict[str, pd.Series], output: Path, title: str) -> None:
 def main(args: argparse.Namespace) -> None:
     strategy = build_strategy(args)
     costs = cost_model(args.exchange, args.fee_bps, args.slippage_bps, not args.no_funding)
-    rows, curves, notes = {}, {}, {}
+    rows, curves, notes, reports = {}, {}, {}, []
     for base in args.symbols.split(","):
         bars = load_bars(args.exchange, base, args.timeframe, args.start, args.end)
         result = backtest(strategy, bars, costs, args.max_leverage)
@@ -103,9 +106,24 @@ def main(args: argparse.Namespace) -> None:
             notes[name] = f"exits {reasons}" + (
                 f" | kill switch at {killed:%Y-%m-%d}" if killed else ""
             )
+        hold = None
         if not args.no_benchmark:
             hold = run_backtest(bars, pd.Series(1.0, index=bars.index), costs)
             rows[f"  {name} buy&hold"] = format_row(summarize(hold))
+        if args.report:
+            report = build_report(result, args.capital, hold, args.mc_runs, args.mc_ruin)
+            reports.append(report)
+            if report.monte_carlo is not None:
+                checks = report.monte_carlo.checks()
+                verdict = ", ".join(
+                    f"{label.lower()} {value:.2f}"
+                    if "Return" in label
+                    else f"{label.lower()} {value:.0%}"
+                    for label, value, _, _ in checks
+                )
+                passed = sum(ok for *_, ok in checks)
+                mc_note = f"Monte Carlo: {verdict} -> {passed}/3 Davey checks"
+                notes[name] = f"{notes[name]} | {mc_note}" if name in notes else mc_note
 
     print(json.dumps(to_spec(strategy)))
     print(
@@ -119,6 +137,23 @@ def main(args: argparse.Namespace) -> None:
     if args.plot:
         plot_equity(curves, args.plot, f"{strategy} ({args.timeframe}, net of costs)")
         print(f"Saved chart to {args.plot}")
+    if args.report:
+        spec = to_spec(strategy)
+        folder = (
+            Path("reports") / f"{spec['type']}_{args.timeframe}"
+            if args.report == "auto"
+            else Path(args.report)
+        )
+        settings = {
+            "Strategy spec": json.dumps(spec),
+            "Market": f"{args.exchange} perpetuals, {args.timeframe} bars",
+            "Costs": f"fee {costs.fee_bps} bps + slippage {costs.slippage_bps} bps per fill, "
+            f"funding {'on' if costs.include_funding else 'off'}",
+            "Sizing": f"{args.max_leverage:g}x max leverage, starting capital ${args.capital:,.0f}",
+            "Monte Carlo": f"{args.mc_runs:,} runs of one year, ruin = {args.mc_ruin:.0%} loss",
+        }
+        page = write_report(reports, folder, str(strategy), settings)
+        print(f"Saved performance report to {page}")
 
 
 if __name__ == "__main__":
@@ -140,4 +175,15 @@ if __name__ == "__main__":
     parser.add_argument("--no-funding", action="store_true")
     parser.add_argument("--no-benchmark", action="store_true", help="Skip buy-and-hold rows")
     parser.add_argument("--plot", type=Path, help="Save an equity chart, e.g. reports/ma.png")
+    parser.add_argument(
+        "--report",
+        nargs="?",
+        const="auto",
+        help="Write an HTML performance report (default folder reports/<strategy>_<timeframe>/)",
+    )
+    parser.add_argument("--capital", type=float, default=10_000.0, help="Report starting capital")
+    parser.add_argument("--mc-runs", type=int, default=2500, help="Monte Carlo runs")
+    parser.add_argument(
+        "--mc-ruin", type=float, default=0.5, help="Monte Carlo ruin = this loss from the start"
+    )
     main(parser.parse_args())
