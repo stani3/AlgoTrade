@@ -8,6 +8,7 @@ import pytest
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.strategies import (
     EWMAC,
+    IDEAS,
     RULES,
     BracketStrategy,
     CarverBreakout,
@@ -36,9 +37,10 @@ CASES = (
         Combine((EWMAC(), CarverBreakout(), FundingCarry()), weights=(2, 1, 1), multiplier=1.3),
     ]
     + [s for s in map(from_spec, SPECS) if not isinstance(s, BracketStrategy)]
+    + [cls() for cls in IDEAS if not issubclass(cls, BracketStrategy)]
 )
 # Filtered/long-only specs may legitimately sit flat on the (down-trending) synthetic bars.
-MUST_TRADE = [cls() for cls in RULES]
+MUST_TRADE = [cls() for cls in RULES + IDEAS if not issubclass(cls, BracketStrategy)]
 
 
 @dataclass(frozen=True)

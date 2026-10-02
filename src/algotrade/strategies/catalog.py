@@ -14,9 +14,11 @@ import json
 from pathlib import Path
 
 from .base import Strategy
+from .baseline import BuyAndHold
 from .bracket import BreakoutBracket
 from .breakout import BollingerBreakout, DonchianBreakout, KeltnerBreakout
 from .carver import EWMAC, CarverBreakout, FundingCarry
+from .ideas import IDEAS
 from .ma_crossover import MovingAverageCrossover
 from .momentum import MomentumStrategy
 from .parabolic_sar import ParabolicSARStrategy
@@ -43,8 +45,14 @@ RULES: tuple[type[Strategy], ...] = (
 WRAPPERS: tuple[type[Strategy], ...] = (VolTarget, TrendFilter, Combine)
 # Bracket strategies run on the intrabar simulator and cannot be wrapped.
 BRACKETS: tuple[type[Strategy], ...] = (BreakoutBracket,)
+# Benchmarks, kept out of the scan.
+BASELINES: tuple[type[Strategy], ...] = (BuyAndHold,)
+# Research ideas (``strategies/ideas/``) are rebuildable from their specs but kept out of RULES,
+# so the scan and the catalogue are not flooded with experiments.
 
-STRATEGIES: dict[str, type[Strategy]] = {cls.name: cls for cls in RULES + WRAPPERS + BRACKETS}
+STRATEGIES: dict[str, type[Strategy]] = {
+    cls.name: cls for cls in RULES + WRAPPERS + BRACKETS + BASELINES + IDEAS
+}
 
 
 def from_spec(spec: dict | str | Path) -> Strategy:
@@ -78,3 +86,13 @@ def to_spec(strategy: Strategy) -> dict:
         return value
 
     return {"type": strategy.name, **{k: encode(v) for k, v in strategy.params().items()}}
+
+
+def refresh_ideas() -> tuple[type[Strategy], ...]:
+    """Register idea modules written after this package was imported (the build check)."""
+
+    from . import ideas
+
+    found = ideas._discover()
+    STRATEGIES.update({cls.name: cls for cls in found})
+    return found

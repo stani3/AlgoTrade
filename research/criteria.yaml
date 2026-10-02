@@ -1,0 +1,71 @@
+# Thresholds, budgets and data rules for the strategy research pipeline (scripts/research.py).
+#
+# Fixed before testing. Claude is denied Edit/Write on this file (.claude/settings.json) and every
+# result records the hash of the version it was judged against; change values yourself, in git.
+
+data:
+  exchange: binanceusdm
+  symbols: [BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX, LINK, LTC]
+  timeframes: [4h, 1d]
+  # Development code never loads bars at or after this date; the holdout starts here.
+  dev_end: "2025-05-01"
+  # Fixed reference set for behavioural fingerprints (positions only, dev period).
+  fingerprint_symbols: [BTC, ETH, SOL]
+
+budgets:
+  ideas_per_run: 5
+  revisions_per_idea: 1
+  max_optimise_params: 3
+  max_combinations: 100
+
+build:
+  min_line_coverage: 1.0
+  min_branch_coverage: 1.0
+
+dedup:
+  # A new strategy is a behavioural duplicate of a stored fingerprint when either holds.
+  max_position_correlation: 0.9    # refused at or above
+  min_exposure_difference: 0.1     # refused at or below (sum|a-b| / sum(|a|+|b|))
+  min_overlap_days: 180
+  # Fixed parameter values cover +-20% when checking whether two parameter regions overlap.
+  param_tolerance: 0.2
+  # A card must justify every earlier idea with the same family, horizon and an input in common.
+  min_differs_from_chars: 30
+
+feasibility:
+  entry_exit_bars: [5, 10, 20]
+  entry_stop_atr: 2.0
+  entry_target_atr: 4.0
+  entry_atr_length: 14
+  entry_min_profitable_share: 0.70
+  core_min_median_sharpe: 0.3
+  core_min_positive_share: 0.6
+  min_trades_per_symbol: 30
+  monkey_runs: 1000
+  monkey_min_percentile: 0.90
+  optimise_min_profitable_share: 0.70
+
+validation:
+  in_sample_years: 2
+  out_of_sample_months: 6
+  min_wf_efficiency: 0.5
+  oos_min_median_sharpe: 0.3
+  oos_min_profitable_windows: 0.6
+  min_deflated_sharpe: 0.95
+  monte_carlo_runs: 2500
+  ruin: 0.5
+  max_risk_of_ruin: 0.10
+  max_median_drawdown: 0.40
+  min_return_drawdown: 2.0
+  stake_multipliers: [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+
+holdout:
+  min_sharpe: 0.0
+  max_drawdown_percentile: 0.95
+
+incubation:
+  min_days: 90
+  min_trades: 10
+  max_drawdown_percentile: 0.95
+  min_return_percentile: 0.05
+  max_slippage_ratio: 2.0

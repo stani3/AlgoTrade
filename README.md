@@ -142,6 +142,52 @@ Subclass `Strategy` as a frozen dataclass in `src/algotrade/strategies/`, implem
 `target_position(bars) -> pd.Series`, and add the class to `RULES` in `strategies/catalog.py`. The
 tests then automatically check it for lookahead, bounds, spec round-trip, and that it trades.
 
+## Research pipeline
+
+Strategies are developed the way Davey describes: idea, limited feasibility testing, validation,
+then incubation. The work is split into Claude Code skills (`.claude/skills/`) for the parts
+that need judgement, and deterministic gates in `src/algotrade/research/` (CLI:
+`scripts/research.py`) that decide PASS/FAIL against thresholds fixed in advance in
+`research/criteria.yaml`.
+
+| Skill | Does |
+|---|---|
+| `strategy-ideas` | Proposes ideas from books, classic indicators and crypto effects and pre-registers them as idea cards |
+| `strategy-build` | Implements a card as a spec, writing new strategy code with a full test suite when needed |
+
+```powershell
+python -m scripts.research seed                  # once: import pre-journal experiments
+python -m scripts.research new draft_card.md     # pre-register an idea (assigns i002, i003...)
+python -m scripts.research build-check i002      # ruff, tests, 100% coverage, duplicate checks
+python -m scripts.research status                # refresh research/index.md
+python -m scripts.research revise i002 v2.md --reason "..."   # one revision per idea
+python -m scripts.research abandon i002 --reason "..."
+```
+
+Rules the code enforces:
+
+- **Pre-registration.** A card fixes the rules, the parameters and the only grid that will ever
+  be optimised before any test runs. The journal stores the card's hash; an edited card is
+  refused, and changes go through `revise` (budget: one revision per idea).
+- **No duplicates.** A new card is refused if it repeats a registered configuration, overlaps a
+  registered idea's parameter region on the same timeframe (fixed values cover +-20%), is the
+  same rules on another timeframe (that is a revision), or does not explain how it differs from
+  earlier ideas with the same family, horizon and inputs. When the strategy is built, its
+  position fingerprint (daily exposure on BTC/ETH/SOL, positions only) must not correlate 0.9+
+  with any earlier strategy. Failed ideas stay failed unless the user passes `--retest`.
+- **Every trial counts.** `research/trials.csv` records every configuration ever evaluated; the
+  count feeds the deflated Sharpe ratio, so testing more ideas raises the bar.
+- **Holdout.** Development code can only load bars before `data.dev_end` (2025-05-01). The
+  holdout is looked at once per idea version, and every look is journaled.
+- **Coverage.** New strategy code needs 100% line and branch coverage, measured with Numba's
+  JIT off, before it can be tested on data.
+- **Versioned record.** Every idea (failed ones included), its code, tests, results and
+  fingerprint are committed: each stage makes a local commit (never a push). Tested strategy
+  versions never change behaviour; `tests/ideas/test_fingerprints.py` recomputes every stored
+  fingerprint to prove it.
+
+`research/index.md` is the readable list of every idea and why it stopped.
+
 ## Tests
 
 ```powershell
