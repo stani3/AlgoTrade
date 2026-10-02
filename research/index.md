@@ -13,8 +13,8 @@ Configurations evaluated so far: **204** (all count towards the deflated Sharpe 
 ## Screened before the journal (not gated)
 
 Catalogue rules run by `scripts.scan` on the full history. They count as trials and
-their fingerprints block near-copies, but they never passed or failed a gate, so
-registering one of them as an idea is allowed.
+their fingerprints block new code that re-implements them, but they never passed or
+failed a gate, so registering a catalogue rule (or a blend of them) is allowed.
 
 | Rule | Variants screened |
 |---|---|

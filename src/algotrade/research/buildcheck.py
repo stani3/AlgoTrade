@@ -109,19 +109,28 @@ def ruff_problems(root: Path, files: list[Path], python: str = sys.executable) -
 def blocking(nearest: list[fingerprint.Similarity], spec: dict) -> list[fingerprint.Similarity]:
     """Behavioural duplicates that close the idea.
 
-    Matching an earlier idea always counts. Matching a screened catalogue rule or the baseline
-    only counts when the candidate is built from different rules: registering the screened rule
-    itself (sized or blended differently) is how it gets tested properly, but new code that
-    re-creates it is a copy.
+    * An earlier idea: always - testing the same bet twice is the duplicate this prevents.
+    * A screened catalogue rule: only for new idea code. Catalogue rules were looked at by the
+      scan but never tested through the gates, so registering one (or a blend or sizing of
+      them) is how it gets tested properly; new code that re-creates one is a copy and should
+      use the catalogue instead. Trend rules in crypto correlate highly with each other, so
+      blocking every catalogue match would make the whole family untestable.
+    * The buy & hold baseline: always, unless the candidate is buy & hold itself.
     """
 
+    new_code = any(IDEA_TYPE.match(kind) for kind in strategy_types(spec))
     mine = core_rules(spec)
-    return [
-        s
-        for s in nearest
-        if s.duplicate
-        and not (s.source in ("screen", "baseline") and s.spec and core_rules(s.spec) == mine)
-    ]
+
+    def blocks(similarity: fingerprint.Similarity) -> bool:
+        if not similarity.duplicate:
+            return False
+        if similarity.source == "screen":
+            return new_code
+        if similarity.source == "baseline":
+            return not (similarity.spec and core_rules(similarity.spec) == mine)
+        return True
+
+    return [s for s in nearest if blocks(s)]
 
 
 @dataclass
@@ -203,6 +212,8 @@ def build_check(
     others = {k: v for k, v in ideas.items() if k != version.idea}
     own = {version.idea: ideas[version.idea]} if version.idea in ideas else {}
     found = conflicts(others, card.spec, card.optimise, card.timeframe, tolerance)
+    # The user's --retest at registration also covers the failed ideas it overlaps here.
+    found = [c for c in found if not (c.failed and version.retest)]
     found += [
         c
         for c in conflicts(own, card.spec, card.optimise, card.timeframe, tolerance, version.idea)

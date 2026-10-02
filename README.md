@@ -184,7 +184,9 @@ Rules the code enforces:
   same rules on another timeframe (that is a revision), or does not explain how it differs from
   earlier ideas with the same family, horizon and inputs. When the strategy is built, its
   position fingerprint (daily exposure on BTC/ETH/SOL, positions only) must not correlate 0.9+
-  with any earlier strategy. Failed ideas stay failed unless the user passes `--retest`.
+  with any earlier idea or with buy & hold; new strategy code must also not re-create a
+  catalogue rule the scan already screened (use the catalogue rule instead). Failed ideas stay
+  failed unless the user passes `--retest`.
 - **Every trial counts.** `research/trials.csv` records every configuration ever evaluated; the
   count feeds the deflated Sharpe ratio, so testing more ideas raises the bar.
 - **Holdout.** Development code can only load bars before `data.dev_end` (2025-05-01). The

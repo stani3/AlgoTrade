@@ -304,4 +304,24 @@ def test_screened_rules_block_only_re_implementations() -> None:
     nearest = [screened, idea, hold, unrelated]
     assert blocking(nearest, {"type": "ewmac", "fast": 8}) == [idea, hold]
     assert blocking(nearest, {"type": "i007_my_ewmac"}) == [screened, idea, hold]
-    assert blocking(nearest, {"type": "buy_and_hold"}) == [screened, idea]
+    assert blocking(nearest, {"type": "buy_and_hold"}) == [idea]
+    # A different catalogue trend rule that happens to trade like the screened one is allowed.
+    blend = {"type": "combine", "strategies": [{"type": "carver_breakout"}, {"type": "ewmac"}]}
+    assert blocking([screened], blend) == []
+    wrapped_new_code = {"type": "vol_target", "strategy": {"type": "i007_my_ewmac"}}
+    assert blocking([screened], wrapped_new_code) == [screened]
+
+
+def test_retest_also_covers_the_build_duplicate_check(setup) -> None:
+    ws, criteria = setup
+    first = register(ws, criteria, draft(spec={"type": "ewmac"}), commit=False)
+    build_check(ws, criteria, first, commit=False)
+    Journal(ws.journal_path).append(
+        "stage_result", idea="i001", version=1, stage="feasibility", verdict="FAIL"
+    )
+    again = draft(title="Fast trend again", spec={"type": "ewmac"}, differs_from={"i001": WHY})
+    retested = register(ws, criteria, again, retest="user: a year of new data", commit=False)
+    outcome = build_check(ws, criteria, retested, commit=False)
+    # Same configuration as the failed i001: allowed by the user's retest, and the fingerprint
+    # of the very same spec is skipped as well.
+    assert outcome.result.verdict == "PASS", outcome.result.reasons
