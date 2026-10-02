@@ -1,0 +1,192 @@
+{
+  "idea": "i003",
+  "version": 2,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened bollinger_breakout (1d, vol target 25%): correlation 0.62, exposure difference 0.44"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-02T16:13:06Z",
+    "commit": "1ba92cfe2222086f01aa8875c21798672badb659",
+    "criteria_hash": "2f728c62a5eb5dab",
+    "card_hash": "178a7b2614a0a56c",
+    "spec_hash": "57372159bea4dadc",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1d",
+        "start": "2019-09-08 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 2062,
+        "sha": "f126f8bd1d428254"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1d",
+        "start": "2019-11-27 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1982,
+        "sha": "3f56db2f53f8b4ca"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1d",
+        "start": "2020-09-14 00:00:00+00:00",
+        "end": "2025-04-30 00:00:00+00:00",
+        "rows": 1690,
+        "sha": "29bc2cef3542034a"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "171533323f4cb43b_1d",
+      "label": "screened bollinger_breakout (1d, vol target 25%)",
+      "correlation": 0.6162471505820661,
+      "difference": 0.4386883838563029,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "2eb8c73a7e9c1433_4h",
+      "label": "screened spec:carver_trend (4h, vol target 25%)",
+      "correlation": 0.5900220683648065,
+      "difference": 0.5130574249207416,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "combine",
+          "strategies": [
+            {
+              "type": "ewmac",
+              "fast": 8,
+              "slow": 32,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 16,
+              "slow": 64,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 32,
+              "slow": 128,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 40,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 80,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 160,
+              "allow_short": true
+            }
+          ],
+          "weights": [],
+          "multiplier": 1.2
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "bc65fc39ffd340be_1d",
+      "label": "screened donchian_breakout (1d, vol target 25%)",
+      "correlation": 0.5887947843958382,
+      "difference": 0.3809578083207384,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "donchian_breakout",
+          "entry": 20,
+          "exit": 10,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "ce1e118071d1ce3c_1d",
+      "label": "screened momentum (1d, vol target 25%)",
+      "correlation": 0.580103184684077,
+      "difference": 0.428537576770556,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "momentum",
+          "lookback": 20,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "414c818a225240f9_1d",
+      "label": "screened keltner_breakout (1d, vol target 25%)",
+      "correlation": 0.577618225011515,
+      "difference": 0.436121160943587,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "keltner_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [],
+  "modules": []
+}
