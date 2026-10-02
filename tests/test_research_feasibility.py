@@ -77,13 +77,22 @@ def test_random_walk_fails_feasibility(tmp_path) -> None:
         feasibility(ws, criteria, find_version(ws, "i001"), report=False)
 
 
-def test_card_without_grid_skips_the_optimisation_check(tmp_path) -> None:
-    ws, criteria = make_workspace(tmp_path, overrides=FAST, edge=0.002)
+@pytest.mark.parametrize("scoring", [None, "fixed"])
+def test_card_without_grid_skips_the_optimisation_check(tmp_path, scoring) -> None:
+    overrides = FAST if scoring is None else {**FAST, "feasibility.entry_scoring": scoring}
+    ws, criteria = make_workspace(tmp_path, overrides=overrides, edge=0.002)
     built(ws, criteria, draft(spec={"type": "ewmac"}))
     result = feasibility(ws, criteria, find_version(ws, "i001"), report=False, commit=False)
     assert not any(c.name.startswith("limited optimisation") for c in result.checks)
     assert result.extra["chosen"] == {} and result.trials == 1
     assert result.report is None
+    # Criteria files without the key keep the original (compounded) scoring.
+    expected = "fixed size per trade" if scoring == "fixed" else "whole equity per trade"
+    assert expected in result.notes[0]
+    table = pd.read_csv(ws.stage_dir("i001", "fast-trend", 1, "feasibility") / "entry_test.csv")
+    column = "fixed_return" if scoring == "fixed" else "net_return"
+    share = ((table[column] > 0) & (table["trades"] > 0)).mean()
+    assert result.checks[0].value == pytest.approx(share)
 
 
 def test_base_spec_outside_the_grid_is_counted_too(tmp_path) -> None:

@@ -211,7 +211,10 @@ Rules the code enforces:
   fingerprint to prove it.
 
 Feasibility (development data only) runs Davey's limited testing: the entry test (the
-strategy's entries with 5/10/20-bar time exits and a 2/4 ATR bracket), the core system across
+strategy's entries with 5/10/20-bar time exits and a 2/4 ATR bracket; `feasibility.entry_scoring`
+in `criteria.yaml` scores each cell as `fixed`, Davey's same-size trades summed, or
+`compounded`, the whole equity in every trade, which is harsher and is the default when the key
+is missing), the core system across
 all symbols, a monkey test against 1,000 random strategies with the same habits, limited
 optimisation over the card's pre-registered grid (most combinations must make money; parameters
 come from the centre of the best plateau, not the best cell), and diagnostics for the agent to

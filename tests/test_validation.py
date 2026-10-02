@@ -14,7 +14,7 @@ from algotrade.backtest.runner import backtest
 from algotrade.indicators import atr
 from algotrade.strategies import EWMAC, BreakoutBracket, Strategy
 from algotrade.validation.diagnostics import diagnostics, regime_labels, trade_excursions
-from algotrade.validation.entry_test import entry_signals, run_entry_test
+from algotrade.validation.entry_test import cell_profit, entry_signals, run_entry_test
 from algotrade.validation.fast import bracket_returns, position_returns, sharpe
 from algotrade.validation.monkey import monkey_test
 from algotrade.validation.optimize import (
@@ -131,6 +131,28 @@ def test_entry_test_table_and_planted_edge() -> None:
     assert one_bar["profitable"].all() and (one_bar["win_rate"] > 0.75).all()
     assert test.by_exit().loc["1 bars", "profitable"] == 1.0
     assert 0 < test.profitable_share <= 1
+
+
+def test_cell_profit_fixed_size_against_compounded() -> None:
+    # +50% then -40%: one contract each time makes +10%, the whole account ends at 0.9.
+    trades = pd.Series([0.5, -0.4])
+    assert cell_profit(trades, 0.9, "fixed") == pytest.approx(0.1)
+    assert cell_profit(trades, 0.9, "compounded") == pytest.approx(-0.1)
+    assert cell_profit(pd.Series(dtype=float), 1.0, "fixed") == 0.0
+
+
+@pytest.mark.parametrize("scoring", ["fixed", "compounded"])
+def test_entry_test_scoring_decides_profitable(scoring) -> None:
+    test = run_entry_test(Clairvoyant(), universe(), COSTS, [1, 5], 2.0, 4.0, 14, scoring)
+    table = test.table
+    column = "fixed_return" if scoring == "fixed" else "net_return"
+    assert table["profitable"].equals((table[column] > 0) & (table["trades"] > 0))
+    assert (table["fixed_return"] != table["net_return"]).any()
+
+
+def test_entry_test_rejects_unknown_scoring() -> None:
+    with pytest.raises(ValueError, match="scoring must be one of"):
+        run_entry_test(Clairvoyant(), universe(1), COSTS, [5], 2.0, 4.0, 14, "average")
 
 
 def test_entry_test_without_entries_is_not_profitable() -> None:

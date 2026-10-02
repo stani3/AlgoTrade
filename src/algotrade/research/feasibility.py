@@ -23,7 +23,7 @@ from algotrade.backtest.report import build_report
 from algotrade.backtest.report_html import write_report
 from algotrade.strategies import from_spec
 from algotrade.validation.diagnostics import diagnostics
-from algotrade.validation.entry_test import run_entry_test
+from algotrade.validation.entry_test import SCORINGS, run_entry_test
 from algotrade.validation.monkey import monkey_test
 from algotrade.validation.optimize import choose, evaluate, profitable_share, run_grid
 
@@ -96,6 +96,7 @@ def feasibility(
     feas = "feasibility."
     strategy = from_spec(card.spec)
 
+    scoring = criteria.get(feas + "entry_scoring", "compounded")  # older criteria files: compounded
     entry = run_entry_test(
         strategy,
         universe,
@@ -104,6 +105,7 @@ def feasibility(
         criteria.get(feas + "entry_stop_atr"),
         criteria.get(feas + "entry_target_atr"),
         criteria.get(feas + "entry_atr_length"),
+        scoring,
     )
     _, per_symbol = evaluate(card.spec, universe, costs)
     monkeys = monkey_test(strategy, universe, costs, criteria.get(feas + "monkey_runs"), seed)
@@ -196,7 +198,7 @@ def feasibility(
 
     windows = [window(bars, symbol, card.timeframe) for symbol, bars in universe.items()]
     notes = [
-        "Entry test by exit:\n\n" + _markdown(entry.by_exit()),
+        f"Entry test by exit ({SCORINGS[scoring]}):\n\n" + _markdown(entry.by_exit()),
         "Long against short (chosen parameters):\n\n" + _markdown(found["sides"]),
         "Regimes (chosen parameters):\n\n" + _markdown(found["regimes"].set_index(["kind", "regime"])),
         "Excursions (MAE/MFE):\n\n" + _markdown(found["excursions"]),

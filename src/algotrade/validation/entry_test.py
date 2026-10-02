@@ -3,6 +3,13 @@
 The strategy's entries are traded with exits that know nothing about the strategy: a fixed
 number of bars (market-on-close), and a fixed ATR stop and target. A good entry makes money on
 most (exit, market) combinations; Davey looks for roughly 70% of them profitable.
+
+A cell's profit is scored one of two ways:
+
+* ``fixed`` (Davey): every trade has the same size and the profit is the sum of the trade
+  returns, like trading one contract each time.
+* ``compounded``: the whole equity goes into each trade in turn. On volatile markets a run of
+  full-size trades with a positive average can still compound to a loss, so this is harsher.
 """
 
 from __future__ import annotations
@@ -16,6 +23,17 @@ from algotrade.backtest.bracket import BracketSignals, simulate_bracket
 from algotrade.backtest.costs import CostModel
 from algotrade.indicators import atr
 from algotrade.strategies import BracketStrategy, Strategy
+
+SCORINGS = {
+    "fixed": "fixed size per trade, summed (Davey)",
+    "compounded": "whole equity per trade, compounded",
+}
+
+
+def cell_profit(trade_returns: pd.Series, final_equity: float, scoring: str) -> float:
+    """One (exit, market) cell's profit under ``scoring`` (see the module notes)."""
+
+    return float(trade_returns.sum()) if scoring == "fixed" else final_equity - 1.0
 
 
 def entry_signals(strategy: Strategy, bars: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
@@ -55,7 +73,10 @@ def run_entry_test(
     stop_atr: float,
     target_atr: float,
     atr_length: int,
+    scoring: str = "compounded",
 ) -> EntryTest:
+    if scoring not in SCORINGS:
+        raise ValueError(f"entry test scoring must be one of {sorted(SCORINGS)}, not {scoring!r}")
     rows = []
     for symbol, bars in universe.items():
         long, short = entry_signals(strategy, bars)
@@ -71,7 +92,10 @@ def run_entry_test(
             signals = BracketSignals(long, short, stop, target)
             result = simulate_bracket(bars, signals, costs, max_bars=max_bars)
             closed = result.trades[~result.trades["open"].astype(bool)]
-            net = float(result.equity.iloc[-1] - 1.0)
+            final = float(result.equity.iloc[-1])
+            fixed = cell_profit(closed["return"], final, "fixed")
+            compounded = cell_profit(closed["return"], final, "compounded")
+            profit = fixed if scoring == "fixed" else compounded
             rows.append(
                 {
                     "exit": name,
@@ -79,8 +103,9 @@ def run_entry_test(
                     "trades": len(closed),
                     "win_rate": float((closed["return"] > 0).mean()) if len(closed) else 0.0,
                     "avg_trade": float(closed["return"].mean()) if len(closed) else 0.0,
-                    "net_return": net,
-                    "profitable": bool(net > 0 and len(closed) > 0),
+                    "net_return": compounded,
+                    "fixed_return": fixed,
+                    "profitable": bool(profit > 0 and len(closed) > 0),
                 }
             )
     return EntryTest(pd.DataFrame(rows))

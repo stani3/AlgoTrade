@@ -18,7 +18,9 @@ python -m scripts.research feasibility <id>
 It refuses to run unless the build passed and the card, code and tests are committed. It runs:
 
 1. **Entry test**: the strategy's entries with neutral exits (5/10/20-bar time exits and a
-   2/4 ATR bracket) on every symbol; a good entry is profitable in most cells.
+   2/4 ATR bracket) on every symbol; a good entry is profitable in most cells. How a cell's
+   profit is scored (`fixed` size or `compounded`) comes from `criteria.yaml` and is named in
+   the summary; `entry_test.csv` has both figures.
 2. **Core system** at the card's own parameters: median Sharpe across symbols, share of symbols
    positive, enough trades.
 3. **Monkey test**: share of random strategies with the same habits (signal frequency and

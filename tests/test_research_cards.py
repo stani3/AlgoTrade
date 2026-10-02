@@ -39,6 +39,8 @@ def test_criteria_load_with_hash_and_dotted_access() -> None:
         CRITERIA.get("data.nope")
     with pytest.raises(KeyError):
         CRITERIA.get("data.dev_end.deeper")
+    assert CRITERIA.get("data.nope", "fallback") == "fallback"
+    assert CRITERIA.get("data.dev_end", None) == "2025-05-01"
 
 
 def test_hash_follows_the_exact_bytes(tmp_path) -> None:

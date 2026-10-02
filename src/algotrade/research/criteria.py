@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+_REQUIRED = object()
+
 
 @dataclass(frozen=True)
 class Criteria:
@@ -19,10 +21,14 @@ class Criteria:
     values: dict
     hash: str
 
-    def get(self, dotted: str) -> Any:
+    def get(self, dotted: str, default: Any = _REQUIRED) -> Any:
+        """The value at ``dotted``; a missing key is an error unless a ``default`` is given."""
+
         node: Any = self.values
         for key in dotted.split("."):
             if not isinstance(node, dict) or key not in node:
+                if default is not _REQUIRED:
+                    return default
                 raise KeyError(f"criteria.yaml has no '{dotted}'")
             node = node[key]
         return node
