@@ -52,22 +52,24 @@ def tone(value: object) -> str:
     return ""
 
 
-def png(fig) -> str:
-    import matplotlib.pyplot as plt
+def figure(**kwargs):
+    """A figure that needs no GUI backend (pyplot's default backend can fail headless)."""
 
+    from matplotlib.figure import Figure
+
+    return Figure(**kwargs)
+
+
+def png(fig) -> str:
     buffer = io.BytesIO()
     fig.savefig(buffer, format="png", dpi=110, bbox_inches="tight")
-    plt.close(fig)
     encoded = base64.b64encode(buffer.getvalue()).decode()
     return f'<img alt="chart" src="data:image/png;base64,{encoded}">'
 
 
 def equity_chart(report: PerformanceReport) -> str:
-    import matplotlib.pyplot as plt
-
-    fig, (top, bottom) = plt.subplots(
-        2, 1, figsize=(11, 5.6), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
-    )
+    fig = figure(figsize=(11, 5.6))
+    top, bottom = fig.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [3, 1]})
     top.plot(report.equity.index, report.equity.values, color=BLUE, lw=1.2, label="Strategy")
     if report.benchmark is not None:
         top.plot(
@@ -88,10 +90,9 @@ def equity_chart(report: PerformanceReport) -> str:
 
 
 def trade_chart(report: PerformanceReport) -> str:
-    import matplotlib.pyplot as plt
-
     closed = report.trades[~report.trades["open"]]
-    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 3.4))
+    fig = figure(figsize=(11, 3.4))
+    left, right = fig.subplots(1, 2)
     returns = closed["return"].to_numpy() * 100
     bins = np.histogram_bin_edges(returns, bins=40)
     left.hist(returns[returns > 0], bins=bins, color=GREEN, alpha=0.8, label="Winners")
@@ -112,10 +113,9 @@ def trade_chart(report: PerformanceReport) -> str:
 
 
 def monte_carlo_chart(report: PerformanceReport) -> str:
-    import matplotlib.pyplot as plt
-
     mc = report.monte_carlo
-    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 3.4))
+    fig = figure(figsize=(11, 3.4))
+    left, right = fig.subplots(1, 2)
     steps = np.arange(mc.paths.shape[1])
     for path in mc.paths[:100]:
         left.plot(steps, path, color=GREY, lw=0.5, alpha=0.35)

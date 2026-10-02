@@ -55,14 +55,15 @@ def base_spec(args: argparse.Namespace) -> dict:
 
 
 def plot_heatmaps(board: pd.DataFrame, keys: list[str], output: Path, title: str) -> None:
-    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
 
     row_key, col_key = keys[0], keys[1]
     panel_key = keys[2] if len(keys) > 2 else None
     panels = sorted(board[panel_key].unique()) if panel_key else [None]
     values = board["median_sharpe"]
     limit = max(abs(values.min()), abs(values.max()), 0.1)
-    fig, axes = plt.subplots(1, len(panels), figsize=(5.2 * len(panels), 4.6), squeeze=False)
+    fig = Figure(figsize=(5.2 * len(panels), 4.6))
+    axes = fig.subplots(1, len(panels), squeeze=False)
     for ax, panel in zip(axes[0], panels, strict=True):
         part = board if panel is None else board[board[panel_key] == panel]
         table = part.pivot_table(index=row_key, columns=col_key, values="median_sharpe")
@@ -78,7 +79,6 @@ def plot_heatmaps(board: pd.DataFrame, keys: list[str], output: Path, title: str
     fig.suptitle(title, fontsize=10)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=150, bbox_inches="tight")
-    plt.close(fig)
 
 
 def main(args: argparse.Namespace) -> None:

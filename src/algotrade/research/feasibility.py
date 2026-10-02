@@ -38,14 +38,20 @@ from .split import dev_end, dev_universe, window
 from .workspace import Workspace
 
 
-def require_ready(ws: Workspace, version: VersionState, stage: str, after: str) -> None:
-    """The previous stage passed, the card is untouched and the idea's files are committed."""
+def require_ready(
+    ws: Workspace, version: VersionState, stage: str, after: str, repeat: bool = False
+) -> None:
+    """The previous stage passed, the card is untouched and the idea's files are committed.
 
-    if version.failed:
+    ``repeat`` allows running ``stage`` again (a holdout look the user forced), even when that
+    stage's own earlier verdict closed the idea.
+    """
+
+    if version.failed and not (repeat and version.status == f"failed:{stage}"):
         raise Refused(f"{version.idea} v{version.version} is closed ({version.status})")
     if version.stages.get(after, {}).get("verdict") != "PASS":
         raise Refused(f"{version.idea} v{version.version} needs a passing {after} stage first")
-    if stage in version.stages:
+    if stage in version.stages and not repeat:
         raise Refused(f"{version.idea} v{version.version} already has a {stage} result")
     path = ws.root / version.card_path
     if card_hash(path) != version.card_hash:

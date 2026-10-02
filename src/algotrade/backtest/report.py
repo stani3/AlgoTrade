@@ -99,11 +99,16 @@ class MonteCarlo:
     runs: int
     ruin: float
 
-    def checks(self) -> list[tuple[str, float, str, bool]]:
-        """Davey's three pass/fail tests at the size actually traded (1x)."""
+    def checks(
+        self, limits: dict | None = None, size: float = 1.0
+    ) -> list[tuple[str, float, str, bool]]:
+        """Davey's three pass/fail tests at ``size`` (default: the size actually traded, 1x).
 
-        row = self.table.loc[1.0]
-        limits = DAVEY_CRITERIA
+        ``limits`` overrides ``DAVEY_CRITERIA`` (the research pipeline passes its own).
+        """
+
+        row = self.table.loc[size]
+        limits = limits or DAVEY_CRITERIA
         return [
             ("Risk of ruin", row["risk_of_ruin"], f"< {limits['risk_of_ruin']:.0%}",
              bool(row["risk_of_ruin"] < limits["risk_of_ruin"])),

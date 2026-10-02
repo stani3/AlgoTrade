@@ -74,10 +74,11 @@ def format_row(stats: dict) -> dict:
 
 
 def plot_equity(curves: dict[str, pd.Series], output: Path, title: str) -> None:
-    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig = Figure(figsize=(12, 6))
+    ax = fig.subplots()
     for label, equity in curves.items():
         ax.plot(equity.index, equity.values, label=label, linewidth=1)
     ax.set_yscale("log")
@@ -87,7 +88,6 @@ def plot_equity(curves: dict[str, pd.Series], output: Path, title: str) -> None:
     ax.set_title(title, fontsize=9)
     fig.tight_layout()
     fig.savefig(output, dpi=150)
-    plt.close(fig)
 
 
 def main(args: argparse.Namespace) -> None:

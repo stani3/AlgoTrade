@@ -157,12 +157,18 @@ that need judgement, and deterministic gates in `src/algotrade/research/` (CLI:
 | `strategy-ideas` | Proposes ideas from books, classic indicators and crypto effects and pre-registers them as idea cards |
 | `strategy-build` | Implements a card as a spec, writing new strategy code with a full test suite when needed |
 | `strategy-feasibility` | Runs Davey's limited testing, reads the diagnostics for patterns, may propose one revision |
+| `strategy-validate` | Walk-forward, deflated Sharpe, Monte Carlo stake, the one holdout look, freeze, and the approval package |
+| `strategy-pipeline` | The loop: ideas through validation within a budget, moving on after each failure |
 
 ```powershell
 python -m scripts.research seed                  # once: import pre-journal experiments
 python -m scripts.research new draft_card.md     # pre-register an idea (assigns i002, i003...)
 python -m scripts.research build-check i002      # ruff, tests, 100% coverage, duplicate checks
 python -m scripts.research feasibility i002      # limited testing on development data
+python -m scripts.research validate i002         # walk-forward, deflated Sharpe, stake
+python -m scripts.research holdout i002          # the single look at data after 2025-05-01
+python -m scripts.research freeze i002           # frozen.json, decision.md, git tag
+python -m scripts.research report i002 validation   # rebuild an HTML report from the record
 python -m scripts.research status                # refresh research/index.md
 python -m scripts.research revise i002 v2.md --reason "..."   # one revision per idea
 python -m scripts.research abandon i002 --reason "..."
@@ -197,6 +203,17 @@ optimisation over the card's pre-registered grid (most combinations must make mo
 come from the centre of the best plateau, not the best cell), and diagnostics for the agent to
 read: long vs short, symbols, years, ADX and volatility regimes, holding times, MAE/MFE. It
 writes the Davey report for the chosen parameters to `reports/research/<id>/v<n>/feasibility/`.
+
+Validation (still development data) runs a rolling walk-forward: every 6 months the card's grid
+is re-optimised on the previous 2 years and traded on the next 6, and the out-of-sample pieces
+are stitched into one record per symbol. It must keep at least half the in-sample return
+(walk-forward efficiency), a median Sharpe of 0.3 and 60% profitable windows; its deflated Sharpe
+ratio (median symbol, against every configuration in the trial ledger) must reach 0.95; and
+Davey's Monte Carlo on the out-of-sample trades sets the stake, the largest size with risk of
+ruin under 10%, median drawdown under 40% and return/drawdown above 2. Then the holdout: one
+journaled look at the data after the cutoff, judged against paths bootstrapped from the
+out-of-sample bar returns. A strategy that passes is frozen (`frozen.json`, `decision.md`, tag
+`strategy/<id>-v<n>`) and shown to the user with its reports before anyone decides to incubate.
 
 `research/index.md` is the readable list of every idea and why it stopped.
 

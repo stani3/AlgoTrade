@@ -10,6 +10,10 @@ Examples:
     python -m scripts.research status
     python -m scripts.research build-check i002
     python -m scripts.research feasibility i002
+    python -m scripts.research validate i002
+    python -m scripts.research holdout i002
+    python -m scripts.research freeze i002
+    python -m scripts.research report i002 validation
     python -m scripts.research revise i002 path/to/draft_v2.md --reason "short side lost in every regime"
     python -m scripts.research abandon i002 --reason "needs open-interest data we do not have"
 """
@@ -24,11 +28,15 @@ from algotrade.research.buildcheck import build_check
 from algotrade.research.cards import CardError, read_card
 from algotrade.research.criteria import load_criteria
 from algotrade.research.feasibility import feasibility
+from algotrade.research.freeze import freeze
+from algotrade.research.holdout import holdout
 from algotrade.research.index import write_index
 from algotrade.research.journal import Journal, TrialLedger
 from algotrade.research.registry import Refused, abandon, find_version, register, revise
+from algotrade.research.reproduce import reproduce
 from algotrade.research.seed import seed
 from algotrade.research.split import HoldoutViolation
+from algotrade.research.validate import validate
 from algotrade.research.vcs import GitError
 from algotrade.research.workspace import Workspace
 
@@ -124,6 +132,45 @@ def cmd_feasibility(ws: Workspace, args: argparse.Namespace) -> int:
     return print_result(result)
 
 
+def cmd_validate(ws: Workspace, args: argparse.Namespace) -> int:
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    result = validate(ws, criteria, version, commit=not args.no_commit, report=not args.no_report)
+    if result.extra.get("stake"):
+        print(f"stake {result.extra['stake']:g}x")
+    return print_result(result)
+
+
+def cmd_holdout(ws: Workspace, args: argparse.Namespace) -> int:
+    if args.force and not args.reason:
+        raise Refused("a forced second holdout look needs --reason (the user's)")
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    result = holdout(
+        ws, criteria, version, force=args.force, reason=args.reason or "",
+        commit=not args.no_commit, report=not args.no_report,
+    )  # fmt: skip
+    return print_result(result)
+
+
+def cmd_freeze(ws: Workspace, args: argparse.Namespace) -> int:
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    frozen = freeze(ws, criteria, version, commit=not args.no_commit)
+    folder = ws.version_dir(version.idea, version.slug, version.version)
+    print(f"Frozen {frozen['idea']} v{frozen['version']} as {frozen['tag']}: {frozen['spec']}")
+    print(f"stake {frozen['stake']}x on {frozen['timeframe']} bars")
+    print(f"Decision page: {ws.relative(folder / 'decision.md')}")
+    return 0
+
+
+def cmd_report(ws: Workspace, args: argparse.Namespace) -> int:
+    criteria = load_criteria(ws.criteria_path)
+    version = find_version(ws, args.idea, args.version)
+    print(f"Report written to {reproduce(ws, criteria, version, args.stage)}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     main = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -162,6 +209,31 @@ def parser() -> argparse.ArgumentParser:
     feas.add_argument("--version", type=int)
     feas.add_argument("--no-report", action="store_true", help="Skip the HTML report")
     feas.set_defaults(run=cmd_feasibility)
+
+    val = sub.add_parser("validate", help="Walk-forward, deflated Sharpe and Monte Carlo stake")
+    val.add_argument("idea")
+    val.add_argument("--version", type=int)
+    val.add_argument("--no-report", action="store_true")
+    val.set_defaults(run=cmd_validate)
+
+    hold = sub.add_parser("holdout", help="The one look at the holdout data")
+    hold.add_argument("idea")
+    hold.add_argument("--version", type=int)
+    hold.add_argument("--force", action="store_true", help="USER ONLY: a second look")
+    hold.add_argument("--reason", help="Why the user forces a second look")
+    hold.add_argument("--no-report", action="store_true")
+    hold.set_defaults(run=cmd_holdout)
+
+    frz = sub.add_parser("freeze", help="Freeze, tag and summarise a strategy that passed")
+    frz.add_argument("idea")
+    frz.add_argument("--version", type=int)
+    frz.set_defaults(run=cmd_freeze)
+
+    rep = sub.add_parser("report", help="Rebuild a stage's HTML report from the committed result")
+    rep.add_argument("idea")
+    rep.add_argument("stage", choices=["feasibility", "validation", "holdout"])
+    rep.add_argument("--version", type=int)
+    rep.set_defaults(run=cmd_report)
     return main
 
 
