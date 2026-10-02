@@ -70,8 +70,8 @@ def test_targets_are_aligned_and_bounded(strategy, bars) -> None:
 
 
 @pytest.mark.parametrize("strategy", MUST_TRADE, ids=str)
-def test_every_rule_trades_with_defaults(strategy, bars) -> None:
-    assert (strategy.target_position(bars) != 0).any()
+def test_every_rule_trades_with_defaults(strategy, long_bars) -> None:
+    assert (strategy.target_position(long_bars) != 0).any()
 
 
 @pytest.mark.parametrize("strategy", CASES, ids=str)

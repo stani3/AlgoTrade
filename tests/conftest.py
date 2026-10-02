@@ -24,3 +24,10 @@ def make_bars(n: int = 500, freq: str = "4h", seed: int = 7) -> pd.DataFrame:
 @pytest.fixture
 def bars() -> pd.DataFrame:
     return make_bars()
+
+
+@pytest.fixture
+def long_bars() -> pd.DataFrame:
+    """About 167 days of 4h bars, for rules that need months of history before they can trade
+    (i004 ranks funding against its trailing year once a quarter of that year exists)."""
+    return make_bars(n=1000)
