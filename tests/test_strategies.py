@@ -4,8 +4,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import make_bars
 
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
+from algotrade.data.exchange import TIMEFRAMES
+from algotrade.research.cards import read_card
+from algotrade.research.registry import IDEA_TYPE, strategy_types
 from algotrade.strategies import (
     EWMAC,
     IDEAS,
@@ -24,7 +28,8 @@ from algotrade.strategies import (
     to_spec,
 )
 
-SPECS = sorted(Path(__file__).parent.parent.joinpath("specs").glob("*.json"))
+ROOT = Path(__file__).resolve().parents[1]
+SPECS = sorted(ROOT.joinpath("specs").glob("*.json"))
 
 CASES = (
     [cls() for cls in RULES]
@@ -43,6 +48,57 @@ CASES = (
 MUST_TRADE = [cls() for cls in RULES + IDEAS if not issubclass(cls, BracketStrategy)]
 
 
+FIXTURE_BARS = pd.Timedelta("4h")
+
+
+def bar_length(timeframe: str) -> pd.Timedelta:
+    return pd.Timedelta(TIMEFRAMES[timeframe])
+
+
+def idea_timeframes() -> dict[str, str]:
+    """The shortest timeframe each idea's own strategy type is registered on (from its cards)."""
+
+    found: dict[str, str] = {}
+    for path in sorted(ROOT.glob("research/ideas/*/v*/idea.md")):
+        card = read_card(path)
+        for kind in filter(IDEA_TYPE.match, strategy_types(card.spec)):
+            if kind not in found or bar_length(card.timeframe) < bar_length(found[kind]):
+                found[kind] = card.timeframe
+    return found
+
+
+IDEA_TIMEFRAMES = idea_timeframes()
+
+
+def finer_bars(strategy: Strategy) -> str | None:
+    """The bar frequency of an idea registered on bars finer than the 4h fixtures, else None.
+
+    Rules timed by the clock inside a 4h bar (i005 trades the hours right after the 00:00,
+    08:00 and 16:00 UTC funding settlements) have no events on 4h bars: they would sit flat
+    there, pass the lookahead and bounds checks without testing anything and fail to trade. They
+    get the same random market on their own bar size instead.
+    """
+
+    timeframe = IDEA_TIMEFRAMES.get(strategy.name)
+    if timeframe is None or bar_length(timeframe) >= FIXTURE_BARS:
+        return None
+    return TIMEFRAMES[timeframe]
+
+
+@pytest.fixture
+def market(strategy, bars) -> pd.DataFrame:
+    """``bars``, or the same random market on the strategy's own finer bars."""
+    freq = finer_bars(strategy)
+    return bars if freq is None else make_bars(freq=freq)
+
+
+@pytest.fixture
+def long_market(strategy, long_bars) -> pd.DataFrame:
+    """``long_bars``, or the same random market on the strategy's own finer bars."""
+    freq = finer_bars(strategy)
+    return long_bars if freq is None else make_bars(n=1000, freq=freq)
+
+
 @dataclass(frozen=True)
 class AlwaysLong(Strategy):
     name = "always_long"
@@ -52,26 +108,36 @@ class AlwaysLong(Strategy):
 
 
 @pytest.mark.parametrize("strategy", CASES, ids=str)
-def test_no_lookahead(strategy, bars) -> None:
+def test_no_lookahead(strategy, market) -> None:
     """A target must not change when future bars are appended."""
-    full = strategy.target_position(bars)
+    full = strategy.target_position(market)
     for cut in (60, 150, 333):
-        partial = strategy.target_position(bars.iloc[:cut])
+        partial = strategy.target_position(market.iloc[:cut])
         pd.testing.assert_series_equal(partial, full.iloc[:cut], check_names=False)
 
 
 @pytest.mark.parametrize("strategy", CASES, ids=str)
-def test_targets_are_aligned_and_bounded(strategy, bars) -> None:
-    target = strategy.target_position(bars)
-    assert target.index.equals(bars.index)
+def test_targets_are_aligned_and_bounded(strategy, market) -> None:
+    target = strategy.target_position(market)
+    assert target.index.equals(market.index)
     assert target.notna().all()
     limit = getattr(strategy, "max_leverage", 1.0)
     assert target.abs().max() <= limit + 1e-12
 
 
 @pytest.mark.parametrize("strategy", MUST_TRADE, ids=str)
-def test_every_rule_trades_with_defaults(strategy, long_bars) -> None:
-    assert (strategy.target_position(long_bars) != 0).any()
+def test_every_rule_trades_with_defaults(strategy, long_market) -> None:
+    assert (strategy.target_position(long_market) != 0).any()
+
+
+def test_only_ideas_on_finer_bars_leave_the_4h_fixtures() -> None:
+    assert IDEA_TIMEFRAMES["i004_funding_crowding_short"] == "1d"
+    assert IDEA_TIMEFRAMES["i005_settlement_rebound"] == "1h"
+    assert "vol_target" not in IDEA_TIMEFRAMES  # a catalogue type, even inside a card's spec
+    ideas = {cls.name: cls() for cls in IDEAS}
+    assert finer_bars(ideas["i004_funding_crowding_short"]) is None
+    assert finer_bars(ideas["i005_settlement_rebound"]) == "1h"
+    assert finer_bars(EWMAC()) is None
 
 
 @pytest.mark.parametrize("strategy", CASES, ids=str)
