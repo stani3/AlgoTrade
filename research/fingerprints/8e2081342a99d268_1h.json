@@ -1,0 +1,21 @@
+{
+  "key": "8e2081342a99d268_1h",
+  "spec": {
+    "type": "i008_us_open_momentum",
+    "k": 1.0,
+    "hold_bars": 6,
+    "vol_bars": 720
+  },
+  "spec_hash": "8e2081342a99d268",
+  "timeframe": "1h",
+  "source": "idea",
+  "idea": "i008",
+  "version": 1,
+  "label": "i008 v1 US-open session momentum",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

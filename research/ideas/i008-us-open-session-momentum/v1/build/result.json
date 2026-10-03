@@ -1,0 +1,219 @@
+{
+  "idea": "i008",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i008_us_open_momentum)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i008_us_open_momentum)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i008_us_open_momentum)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: i007 v1 Dual Thrust intraday breakout: correlation 0.13, exposure difference 0.86"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-03T10:25:55Z",
+    "commit": "46efe3abc4411bb1fb53f4074f49ef67d6ca1466",
+    "criteria_hash": "5f452e63b833a30c",
+    "card_hash": "e9fb3b116d66f978",
+    "spec_hash": "8e2081342a99d268",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1h",
+        "start": "2019-09-08 17:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 49471,
+        "sha": "c3da94de67cbca04"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1h",
+        "start": "2019-11-27 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 47561,
+        "sha": "94ec5dbab1bf5eeb"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1h",
+        "start": "2020-09-14 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40553,
+        "sha": "db888c1fd4b31a3f"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "9af758e17a1a659b_1h",
+      "label": "i007 v1 Dual Thrust intraday breakout",
+      "correlation": 0.13221743334899613,
+      "difference": 0.864667489802886,
+      "days": 2062,
+      "duplicate": false,
+      "source": "idea",
+      "spec": {
+        "type": "i007_dual_thrust",
+        "k": 0.5,
+        "range_days": 1
+      }
+    },
+    {
+      "key": "77b7eb678a9cc81e_1d",
+      "label": "screened ma_crossover (1d, vol target 25%)",
+      "correlation": 0.04224433156549232,
+      "difference": 0.8663097687894715,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "ma_crossover",
+          "fast": 20,
+          "slow": 100,
+          "kind": "sma",
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "08f622aa95210610_1d",
+      "label": "screened ma_crossover (1d)",
+      "correlation": 0.040119585076301686,
+      "difference": 0.942061765985211,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "ma_crossover",
+        "fast": 20,
+        "slow": 100,
+        "kind": "sma",
+        "allow_short": true
+      }
+    },
+    {
+      "key": "4815c3a48d64c0d0_4h",
+      "label": "screened parabolic_sar (4h, vol target 25%)",
+      "correlation": 0.03458809219012463,
+      "difference": 0.8751824669787723,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "parabolic_sar",
+          "step": 0.02,
+          "max_step": 0.2,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "2eb8c73a7e9c1433_1d",
+      "label": "screened spec:carver_trend (1d)",
+      "correlation": 0.027605169676662586,
+      "difference": 0.8415289316983868,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "combine",
+          "strategies": [
+            {
+              "type": "ewmac",
+              "fast": 8,
+              "slow": 32,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 16,
+              "slow": 64,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "ewmac",
+              "fast": 32,
+              "slow": 128,
+              "vol_days": 25.0,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 40,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 80,
+              "allow_short": true
+            },
+            {
+              "type": "carver_breakout",
+              "lookback": 160,
+              "allow_short": true
+            }
+          ],
+          "weights": [],
+          "multiplier": 1.2
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i008_us_open_momentum.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 19%]\n........................................................................ [ 38%]\n........................................................................ [ 58%]\n........................................................................ [ 77%]\n........................................................................ [ 97%]\n..........                                                               [100%]\n370 passed in 33.08s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i008_us_open_momentum.py"
+  ]
+}
