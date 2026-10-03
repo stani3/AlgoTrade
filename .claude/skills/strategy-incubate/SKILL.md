@@ -14,6 +14,8 @@ always the user's own step, outside the pipeline.
 - The user explicitly approved incubating this frozen strategy (`research/ideas/<id>-<slug>/v<n>/
   frozen.json` exists, tag `strategy/<id>-v<n>`). Without that yes, stop.
 - NautilusTrader is installed (`pip install -e .[live]`).
+- The strategy trades crypto. `frozen.json` with a `universe` other than crypto (stocks, bonds,
+  commodities, forex) has no paper venue yet; `research incubate` and `paper_trade` refuse it.
 
 ## 1. Parity
 

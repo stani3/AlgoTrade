@@ -60,6 +60,11 @@ Tests, to the same standard as `tests/test_bracket_*.py`. Every item applies:
 7. **Smoke run on real BTC data** (`algotrade.backtest.runner.load_bars`), skipped with
    `pytest.skip` when the file is missing; assert only that it runs and trades, never on
    performance.
+8. **Session markets**, when the card's universe is not only crypto: hand-computed cases on
+   bars with overnight and weekend gaps (US sessions 09:30-16:00 New York, the forex week
+   Sunday to Friday 17:00; `session_index` and `random_walk` in `tests/research_helpers.py`
+   build them), showing that rules which count bars or days (`bars_per_day`, lookbacks in
+   days) mean sessions there and that nothing assumes 24 bars a day.
 
 The `bars` fixture (`tests/conftest.py`) and `bracket_helpers` are importable from
 `tests/ideas/`. The generic checks in `tests/ideas/test_ideas_generic.py` and

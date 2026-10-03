@@ -43,6 +43,11 @@ and the Davey report (`reports/research/<id>/v<n>/feasibility/report.html`, serv
 - **Regimes** (`diagnostics_regimes.csv`): does it only work when ADX says the market trends, or
   in one volatility tercile?
 - **Symbols and years**: is it one coin or one year (2021's bull run, say) doing all the work?
+- **Asset classes** (`core_by_class.csv`, cards with more than one class): does one class carry
+  the result? That is evidence about the hypothesis, not a licence to drop the classes that
+  lost. A revision may change the universe only when the card's own reasoning predicts the
+  split (the effect needs trending markets, and only commodities and currencies trended), and
+  it is counted as another trial.
 - **Holding times and excursions** (MAE/MFE): do winners first go against the trade by more than
   the stop allows? Do losers ever go into profit first, so a target would have saved them?
 - **Entry test by exit**: if the entry only works with one exit, the edge may be in the exit.

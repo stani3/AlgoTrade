@@ -6,7 +6,8 @@ taxonomy:
   family: trend           # trend | breakout | mean_reversion | carry | volatility | seasonality | other
   inputs: [price]         # any of: price, volume, funding, calendar
   horizon: days           # typical holding time: hours | days | weeks | months
-timeframe: 4h             # 4h | 1d
+timeframe: 4h             # 1h | 4h | 1d
+universe: [crypto]        # [crypto] (default), asset classes from data.universes, or all
 spec:                     # existing catalogue type(s), or a new snake_case type for new code
   type: new_rule_name
   lookback: 20
