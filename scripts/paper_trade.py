@@ -22,6 +22,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from algotrade.config import data_root_override, load_dotenv
 from algotrade.research.criteria import load_criteria
 from algotrade.research.incubation import frozen_strategy, incubation_dir
 from algotrade.research.registry import Refused, find_version
@@ -29,20 +30,6 @@ from algotrade.research.split import load_full_bars
 from algotrade.research.workspace import Workspace
 
 PARITY_BARS = 1500
-
-
-def load_dotenv(path: Path) -> None:
-    """Read KEY=VALUE lines from ``.env`` into the environment without printing anything."""
-
-    import os
-
-    if not path.exists():
-        return
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def parity(ws: Workspace, frozen: dict, bars_per_symbol: int = PARITY_BARS) -> bool:
@@ -87,10 +74,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--parity", action="store_true", help="Check the adapter on real bars")
     args = parser.parse_args(argv)
 
-    ws = Workspace(args.root.resolve())
+    ws = Workspace(args.root.resolve(), data_root=data_root_override())
     try:
         version = find_version(ws, args.idea, args.version)
         frozen = frozen_strategy(ws, version)
+        if frozen.get("universe", ["crypto"]) != ["crypto"]:
+            raise Refused(
+                f"{version.idea} trades {', '.join(frozen['universe'])}; the testnets are crypto"
+            )
     except Refused as error:
         print(f"REFUSED: {error}")
         return 1

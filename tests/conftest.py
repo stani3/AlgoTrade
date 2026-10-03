@@ -2,6 +2,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from algotrade import parallel
+from algotrade.config import DATA_ROOT_ENV
+
+
+@pytest.fixture(autouse=True)
+def _isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests build their own data folders, so a shell's ALGOTRADE_DATA_ROOT must not reach the
+    code under test, and they run their jobs inline unless they ask for worker processes.
+    Tests that want the real data or more workers read the variables when imported."""
+
+    monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+    monkeypatch.setenv(parallel.ENV, "1")
+
 
 def make_bars(n: int = 500, freq: str = "4h", seed: int = 7) -> pd.DataFrame:
     rng = np.random.default_rng(seed)

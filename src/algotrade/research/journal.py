@@ -3,7 +3,9 @@
 ``journal.jsonl`` holds one event per line (ideas registered, stage verdicts, holdout looks,
 freezes, abandons, seeding). ``trials.csv`` holds every strategy configuration ever evaluated,
 which feeds duplicate detection and the deflated Sharpe ratio's trial count. Neither file is
-ever rewritten, only appended to.
+ever rewritten, only appended to, with one exception: ``research migrate-trials`` adds the
+``universe`` column to a ledger written before ideas could name their asset classes (every
+earlier row is crypto).
 """
 
 from __future__ import annotations
@@ -31,6 +33,12 @@ TRIAL_COLUMNS = [
     "window",
     "spec",
 ]
+UNIVERSE_COLUMN = "universe"
+CRYPTO_ONLY = ("crypto",)
+
+
+class LedgerFormatError(RuntimeError):
+    """The trial ledger's columns do not fit what is being added (or migrated)."""
 
 
 def now() -> str:
@@ -60,6 +68,8 @@ class VersionState:
     frozen: str | None = None
     abandoned: str | None = None
     incubation_start: str | None = None
+    universe: tuple[str, ...] = CRYPTO_ONLY  # the asset classes the card registered
+    symbols: tuple[str, ...] | None = None  # their symbols at registration (None: older cards)
 
     @property
     def last_stage(self) -> str | None:
@@ -160,6 +170,8 @@ class Journal:
                     reason=entry.get("reason"),
                     retest=entry.get("retest"),
                     historical=bool(entry.get("historical")),
+                    universe=tuple(entry.get("universe") or CRYPTO_ONLY),
+                    symbols=tuple(entry["symbols"]) if entry.get("symbols") else None,
                 )
                 ideas.setdefault(state.idea, IdeaState(state.idea)).versions[state.version] = state
                 continue
@@ -195,30 +207,75 @@ class TrialLedger:
     def __init__(self, path: Path) -> None:
         self.path = path
 
+    def _header(self) -> list[str] | None:
+        if not self.path.exists():
+            return None
+        with self.path.open(encoding="utf-8") as handle:
+            return handle.readline().strip().split(",")
+
     def add(self, rows: list[dict]) -> int:
+        """Append rows; a row without a ``universe`` is crypto.
+
+        A ledger from before universes existed keeps its columns while only crypto rows are
+        added; the first row for another universe needs ``research migrate-trials`` first.
+        """
+
         if not rows:
             return 0
+        rows = [{**row, UNIVERSE_COLUMN: row.get(UNIVERSE_COLUMN) or "crypto"} for row in rows]
+        header = self._header()
+        columns = [*TRIAL_COLUMNS, UNIVERSE_COLUMN]
+        if header == TRIAL_COLUMNS:
+            others = sorted({row[UNIVERSE_COLUMN] for row in rows} - {"crypto"})
+            if others:
+                raise LedgerFormatError(
+                    f"{self.path.name} has no universe column yet; run `python -m "
+                    f"scripts.research migrate-trials` before adding {others[0]} trials"
+                )
+            columns = TRIAL_COLUMNS
         frame = pd.DataFrame(
             [{"ts": now(), **row} for row in rows],
-        ).reindex(columns=TRIAL_COLUMNS)
+        ).reindex(columns=columns)
         frame["spec"] = frame["spec"].map(
             lambda spec: spec if isinstance(spec, str) else json.dumps(spec, sort_keys=True)
         )
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        header = not self.path.exists()
-        frame.to_csv(self.path, mode="a", header=header, index=False, lineterminator="\n")
+        frame.to_csv(self.path, mode="a", header=header is None, index=False, lineterminator="\n")
         return len(frame)
 
     def frame(self) -> pd.DataFrame:
         if not self.path.exists():
-            return pd.DataFrame(columns=TRIAL_COLUMNS)
-        return pd.read_csv(self.path, dtype={"spec_hash": str, "idea": str, "label": str})
+            return pd.DataFrame(columns=[*TRIAL_COLUMNS, UNIVERSE_COLUMN])
+        frame = pd.read_csv(
+            self.path, dtype={"spec_hash": str, "idea": str, "label": str, UNIVERSE_COLUMN: str}
+        )
+        if UNIVERSE_COLUMN not in frame:
+            frame[UNIVERSE_COLUMN] = "crypto"
+        return frame
 
     def distinct(self) -> pd.DataFrame:
-        """One row per (configuration, timeframe): the most recent evaluation of each."""
+        """One row per (configuration, timeframe, universe): the most recent evaluation of each.
+        The same rules tried on another universe are another trial."""
 
         frame = self.frame()
-        return frame.drop_duplicates(["spec_hash", "timeframe"], keep="last")
+        return frame.drop_duplicates(["spec_hash", "timeframe", UNIVERSE_COLUMN], keep="last")
 
     def count(self) -> int:
         return len(self.distinct())
+
+
+def migrate_trials(path: Path) -> int:
+    """Add the ``universe`` column (``crypto`` on every row) to a ledger from before universes.
+
+    Each line keeps its text and gains ``,crypto``; returns the number of rows (0 if there is
+    no ledger). A ledger that already has the column is refused.
+    """
+
+    if not path.exists():
+        return 0
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if lines[0].split(",") != TRIAL_COLUMNS:
+        raise LedgerFormatError(f"{path.name} already has a universe column (or unknown columns)")
+    migrated = [f"{lines[0]},{UNIVERSE_COLUMN}"] + [f"{line},crypto" for line in lines[1:]]
+    path.write_text("\n".join(migrated) + "\n", encoding="utf-8", newline="\n")
+    return len(lines) - 1

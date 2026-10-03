@@ -71,10 +71,17 @@ def choose_stake(
     ruin: float,
     davey_limits: dict,
     seed: int = 0,
+    max_stake: float | None = None,
 ) -> Sizing:
+    """``max_stake`` is the most the instruments allow (leverage caps); None means no cap."""
+
     mc = monte_carlo(returns, per_year, runs, ruin, tuple(multipliers), seed)
     sizing = Sizing(mc, None, davey_limits)
     peak = mc.table["median_return"].idxmax()
-    passing = [size for size in mc.table.index if size <= peak and sizing.passing(size)]
+    passing = [
+        size
+        for size in mc.table.index
+        if size <= peak and sizing.passing(size) and (max_stake is None or size <= max_stake)
+    ]
     sizing.stake = float(max(passing)) if passing else None
     return sizing

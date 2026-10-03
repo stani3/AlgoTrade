@@ -43,7 +43,8 @@ If it fails, report and stop.
 python -m scripts.research freeze <id>
 ```
 
-Writes `frozen.json` (the exact spec, timeframe, stake and symbols incubation will trade),
+Writes `frozen.json` (the exact spec, timeframe, stake and symbols incubation will trade;
+for ideas about other asset classes also their `universe`),
 `decision.md`, commits and tags `strategy/<id>-v<n>`.
 
 ## 4. The approval package (always before asking)
@@ -58,7 +59,10 @@ Writes `frozen.json` (the exact spec, timeframe, stake and symbols incubation wi
    chosen parameters and why (plateau centre), the stake and its Monte Carlo ruin and drawdown,
    the deflated Sharpe with the trial count, the version history, and the known weaknesses.
 4. Then ask the user whether to start incubation (paper trading on testnet). Make clear that
-   incubation is paper trading and that real money is never part of this pipeline.
+   incubation is paper trading and that real money is never part of this pipeline. A strategy
+   whose card names other asset classes than crypto cannot be paper traded yet (the testnets
+   are Binance and Bybit): present the package, say so, and ask the user what they want to do
+   instead of asking about incubation.
 
 ## Never
 

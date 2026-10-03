@@ -1,8 +1,8 @@
 """Registering, revising and abandoning ideas, with the duplicate rules enforced in code.
 
 Before a card is stored it must not repeat any registered configuration exactly, overlap a
-registered idea's parameter region on the same timeframe, or be the same rules on another
-timeframe (that is a revision of the existing idea). Earlier ideas with the same family, horizon
+registered idea's parameter region on the same timeframe and universe, or be the same rules on
+another timeframe or universe (that is a revision of the existing idea). Earlier ideas with the same family, horizon
 and an input in common must each be answered with a ``differs_from`` note. Matches against a
 failed idea are only allowed with an explicit ``--retest`` reason from the user.
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from algotrade.instruments import symbols_for
 from algotrade.strategies import STRATEGIES
 
 from . import vcs
@@ -41,7 +42,7 @@ class Conflict:
         what = {
             "exact": "repeats a configuration already registered by",
             "overlap": "overlaps the parameter region of",
-            "variant": "is the same rules on another timeframe as",
+            "variant": "is the same rules on another timeframe or universe as",
         }[self.kind]
         state = "failed" if self.failed else "active"
         return f"{what} {self.idea} v{self.version} '{self.title}' ({state})"
@@ -79,21 +80,26 @@ def conflicts(
     timeframe: str,
     tolerance: float,
     skip_overlap_for: str | None = None,
+    universe: tuple[str, ...] = ("crypto",),
 ) -> list[Conflict]:
+    """Registered versions this configuration repeats (``exact``), overlaps on the same
+    timeframe and universe (``overlap``), or repeats on another timeframe or universe
+    (``variant``)."""
+
     mine = config_hashes(spec, grid)
     my_region = region(spec, grid, timeframe, tolerance)
     found = []
     for idea in ideas.values():
         for version in idea.versions.values():
             theirs = config_hashes(version.spec, version.grid)
-            same_tf = version.timeframe == timeframe
+            same_cell = version.timeframe == timeframe and version.universe == tuple(universe)
             kind = None
-            if same_tf and mine & theirs:
+            if same_cell and mine & theirs:
                 kind = "exact"
             elif idea.idea != skip_overlap_for:
                 other = region(version.spec, version.grid, version.timeframe, tolerance)
                 if my_region.overlaps(other):
-                    kind = "overlap" if same_tf else "variant"
+                    kind = "overlap" if same_cell else "variant"
             if kind:
                 found.append(Conflict(kind, idea.idea, version.version, idea.failed, idea.title))
     return found
@@ -158,6 +164,8 @@ def _store(
     slug: str,
     retest: str | None,
     commit: bool,
+    universe: tuple[str, ...],
+    symbols: list[str],
 ) -> VersionState:
     card = stamp(draft, reg)
     folder = ws.version_dir(reg.idea, slug, reg.version)
@@ -180,6 +188,8 @@ def _store(
         parent=reg.parent,
         reason=reg.reason,
         retest=retest,
+        universe=list(universe),
+        symbols=list(symbols),
     )
     paths = [folder, ws.journal_path, write_index(ws)]
     if commit:
@@ -205,14 +215,19 @@ def register(
     spec = rename_new_types(draft.spec, idea)
     check_builds(spec, draft.optimise)
 
+    universe = draft.universe(criteria)
     found = conflicts(
-        ideas, spec, draft.optimise, draft.timeframe, criteria.get("dedup.param_tolerance")
-    )
+        ideas, spec, draft.optimise, draft.timeframe, criteria.get("dedup.param_tolerance"),
+        universe=universe,
+    )  # fmt: skip
     blocking = [c for c in found if not (c.failed and retest)]
     if blocking:
         hints = []
         if any(c.kind == "variant" and not c.failed for c in blocking):
-            hints.append("A different timeframe of an active idea goes through `research revise`.")
+            hints.append(
+                "A different timeframe or universe of an active idea goes through "
+                "`research revise`."
+            )
         if any(c.failed for c in blocking):
             hints.append("Failed ideas stay failed; only the user can override with --retest.")
         raise Refused(
@@ -229,7 +244,8 @@ def register(
             f"differs under differs_from: {', '.join(missing)}"
         )
     reg = Registration(idea=idea, version=1, registered=now(), spec=spec)
-    return _store(ws, journal, draft, reg, draft.slug, retest, commit)
+    symbols = symbols_for(criteria, universe)
+    return _store(ws, journal, draft, reg, draft.slug, retest, commit, universe, symbols)
 
 
 def revise(
@@ -265,6 +281,7 @@ def revise(
     _check_types(draft.spec, own=idea)
     spec = rename_new_types(draft.spec, idea)
     check_builds(spec, draft.optimise)
+    universe = draft.universe(criteria)
     found = conflicts(
         ideas,
         spec,
@@ -272,6 +289,7 @@ def revise(
         draft.timeframe,
         criteria.get("dedup.param_tolerance"),
         skip_overlap_for=idea,
+        universe=universe,
     )
     if found:
         raise Refused(
@@ -293,7 +311,8 @@ def revise(
         parent=latest.version,
         reason=reason.strip(),
     )
-    return _store(ws, journal, draft, reg, state.slug, None, commit)
+    symbols = symbols_for(criteria, universe)
+    return _store(ws, journal, draft, reg, state.slug, None, commit, universe, symbols)
 
 
 def abandon(ws: Workspace, idea: str, reason: str, commit: bool = True) -> VersionState:

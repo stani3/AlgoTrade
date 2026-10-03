@@ -62,6 +62,11 @@ def start(
     """Record that incubation started (the user approved it). ``when`` defaults to now."""
 
     frozen = frozen_strategy(ws, version)
+    if frozen.get("universe", ["crypto"]) != ["crypto"]:
+        raise Refused(
+            f"{version.idea} v{version.version} trades {', '.join(frozen['universe'])}: paper "
+            "trading runs on the Binance and Bybit testnets only, so it stops at the freeze"
+        )
     if version.incubation_start is not None:
         raise Refused(
             f"{version.idea} v{version.version} has been incubating since {version.incubation_start}"

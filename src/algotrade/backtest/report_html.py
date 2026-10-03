@@ -6,13 +6,18 @@ import base64
 import html
 import io
 import math
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .report import DAVEY_CRITERIA, FIELDS, MC_KEYS, PerformanceReport
+from algotrade.parallel import Pool, run
+
+from .costs import CostModel
+from .engine import BacktestResult, run_backtest
+from .report import DAVEY_CRITERIA, FIELDS, MC_KEYS, PerformanceReport, build_report
 
 GREEN, RED, GREY, BLUE = "#1a7f37", "#cf222e", "#8c959f", "#0969da"
 # Fields where the sign means good or bad; costs and drawdown sizes stay uncoloured.
@@ -441,11 +446,21 @@ test further (walk-forward, other markets, incubation), not a reason to trade.</
 </ul>"""
 
 
-def render_html(reports: list[PerformanceReport], title: str, settings: dict) -> str:
+def render_html(
+    reports: list[PerformanceReport],
+    title: str,
+    settings: dict,
+    sections: list[str] | None = None,
+) -> str:
+    """The report page; ``sections`` are the markets' HTML if already rendered (in parallel)."""
+
     rows = "".join(f"<dt>{esc(k)}</dt><dd>{esc(v)}</dd>" for k, v in settings.items())
-    sections = "".join(
-        symbol_section(report, f"s{number}", number == 0) for number, report in enumerate(reports)
-    )
+    if sections is None:
+        sections = [
+            symbol_section(report, f"s{number}", number == 0)
+            for number, report in enumerate(reports)
+        ]
+    sections = "".join(sections)
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -464,15 +479,56 @@ def render_html(reports: list[PerformanceReport], title: str, settings: dict) ->
 
 
 def write_report(
-    reports: list[PerformanceReport], folder: Path, title: str, settings: dict
+    reports: list[PerformanceReport],
+    folder: Path,
+    title: str,
+    settings: dict,
+    sections: list[str] | None = None,
 ) -> Path:
     """Write ``report.html``, ``summary.csv`` and one ``trades_<market>.csv`` per market."""
 
     folder.mkdir(parents=True, exist_ok=True)
     page = folder / "report.html"
-    page.write_text(render_html(reports, title, settings), encoding="utf-8")
+    page.write_text(render_html(reports, title, settings, sections), encoding="utf-8")
     summary_frame(reports).to_csv(folder / "summary.csv")
     for report in reports:
         safe = "".join(ch if ch.isalnum() else "_" for ch in report.name)
         report.trades.to_csv(folder / f"trades_{safe}.csv", index=False)
     return page
+
+
+@dataclass(frozen=True)
+class ReportTask:
+    """One market's report: its result, its bars (for buy & hold over the same bars), costs."""
+
+    result: BacktestResult
+    bars: pd.DataFrame
+    costs: CostModel
+    seed: int
+    anchor: str
+    is_open: bool
+
+
+def report_section(task: ReportTask) -> tuple[PerformanceReport, str]:
+    """The market's performance report and its HTML section (the charts take the time)."""
+
+    part = task.bars.loc[task.result.ledger.index]
+    hold = run_backtest(part, pd.Series(1.0, index=part.index), task.costs)
+    report = build_report(task.result, benchmark=hold, seed=task.seed)
+    return report, symbol_section(report, task.anchor, task.is_open)
+
+
+def render_reports(
+    markets: list[tuple[BacktestResult, pd.DataFrame, CostModel]],
+    seed: int = 0,
+    pool: Pool | None = None,
+) -> tuple[list[PerformanceReport], list[str]]:
+    """Reports and HTML sections for ``(result, bars, costs)`` markets, in parallel if a pool
+    is given; pass both to :func:`write_report`."""
+
+    tasks = [
+        ReportTask(result, bars, costs, seed, f"s{number}", number == 0)
+        for number, (result, bars, costs) in enumerate(markets)
+    ]
+    found = run(report_section, tasks, pool)
+    return [report for report, _ in found], [section for _, section in found]

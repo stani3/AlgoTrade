@@ -12,6 +12,7 @@ A card is Markdown with YAML front matter::
     optimise: {z_entry: [1.5, 2.0, 2.5], lookback: [45, 90, 180]}
     expected_trades_per_year: 12
     differs_from: {i003: "..."}
+    universe: [crypto]           # optional: asset classes, or all (default crypto)
     ---
     ## Hypothesis
     ...
@@ -30,6 +31,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from algotrade.instruments import UniverseError, resolve_universe
 
 from .criteria import Criteria
 
@@ -93,6 +96,11 @@ class Card:
         parent = self.front.get("parent")
         return None if parent is None else int(parent)
 
+    def universe(self, criteria: Criteria) -> tuple[str, ...]:
+        """The asset classes the card is about; a card without ``universe`` means crypto."""
+
+        return resolve_universe(self.front.get("universe"), criteria)
+
     def combinations(self) -> list[dict]:
         """Every parameter combination of the pre-registered grid (one empty dict if none)."""
 
@@ -145,6 +153,18 @@ def validate(card: Card, criteria: Criteria) -> list[str]:
         problems.append(f"taxonomy.inputs must be a non-empty list from {', '.join(INPUTS)}")
     if taxonomy.get("horizon") not in HORIZONS:
         problems.append(f"taxonomy.horizon must be one of {', '.join(HORIZONS)}")
+    try:
+        classes = card.universe(criteria)
+    except UniverseError as error:
+        problems.append(f"universe: {error}")
+        classes = None
+    if classes is not None and "funding" in inputs and classes != ("crypto",):
+        problems.append("funding is a crypto-perpetual input: the universe must be [crypto]")
+    if classes is not None and "volume" in inputs and "fx" in classes:
+        problems.append(
+            "forex volume is the data feed's tick activity, not traded volume: drop the "
+            "volume input or the fx class"
+        )
     timeframes = criteria.get("data.timeframes")
     if card.timeframe not in timeframes:
         problems.append(f"timeframe must be one of {', '.join(timeframes)}")

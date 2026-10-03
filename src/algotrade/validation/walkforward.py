@@ -15,19 +15,21 @@ annualised in-sample return of the chosen parameters: a robust system keeps at l
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from algotrade.backtest.bracket import BracketSignals, simulate_bracket
-from algotrade.backtest.costs import CostModel
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.engine import BacktestResult, extract_trades, run_backtest
 from algotrade.backtest.metrics import YEAR, periods_per_year, sharpe_ratio
-from algotrade.research.dedup import set_path
+from algotrade.parallel import Pool, run
+from algotrade.research.dedup import grid_specs, set_path
 from algotrade.strategies import BracketStrategy, from_spec
 
-from .optimize import choose, run_grid
+from .optimize import assemble_board, choose, grid_symbol
 
 
 @dataclass(frozen=True)
@@ -61,7 +63,11 @@ def make_windows(
 
 
 def out_of_sample(
-    spec: dict, history: pd.DataFrame, start: pd.Timestamp, costs: CostModel
+    spec: dict,
+    history: pd.DataFrame,
+    start: pd.Timestamp,
+    costs: CostModel,
+    max_leverage: float = 1.0,
 ) -> BacktestResult:
     """Trade ``spec`` from ``start`` on, flat at ``start``, signals computed on all ``history``."""
 
@@ -80,7 +86,8 @@ def out_of_sample(
             cooldown_win=strategy.cooldown_win, cooldown_loss=strategy.cooldown_loss,
             kill_drawdown=strategy.kill_drawdown, max_bars=getattr(strategy, "max_bars", 0),
         )  # fmt: skip
-    return run_backtest(part, strategy.target_position(history).reindex(part.index), costs)
+    target = strategy.target_position(history).reindex(part.index)
+    return run_backtest(part, target, costs, max_leverage=max_leverage)
 
 
 def stitch(pieces: list[BacktestResult], costs: CostModel) -> BacktestResult:
@@ -171,46 +178,126 @@ class WalkForward:
         return out / in_sample if in_sample > 0 else 0.0
 
 
+@dataclass(frozen=True)
+class InSampleTask:
+    bars: pd.DataFrame
+    costs: CostModel
+    specs: list[dict]
+    windows: list[Window]
+    min_in_sample_share: float
+    max_leverage: float = 1.0
+
+
+def in_sample_symbol(task: InSampleTask) -> list[list[tuple[dict, bool]] | None]:
+    """Per window, every grid configuration on this symbol's in-sample bars, or None when the
+    symbol has too little history in that window to take part."""
+
+    out = []
+    bars = task.bars
+    for window in task.windows:
+        part = bars[
+            (bars.index >= window.in_sample_start) & (bars.index < window.out_of_sample_start)
+        ]
+        span = window.out_of_sample_start - window.in_sample_start
+        if len(part) and (part.index[-1] - part.index[0]) >= span * task.min_in_sample_share:
+            out.append(grid_symbol(task.specs, part, task.costs, task.max_leverage))
+        else:
+            out.append(None)
+    return out
+
+
+@dataclass(frozen=True)
+class OutOfSampleTask:
+    bars: pd.DataFrame
+    costs: CostModel
+    plan: list[tuple[Window, dict]]  # each window with the parameters chosen for it
+    max_leverage: float = 1.0
+
+
+def out_of_sample_symbol(
+    task: OutOfSampleTask,
+) -> tuple[list[tuple[float, float] | None], BacktestResult | None]:
+    """Per window, this symbol's out-of-sample (return, Sharpe) or None if it has no bars there;
+    and the stitched out-of-sample record."""
+
+    per_window, pieces = [], []
+    for window, spec in task.plan:
+        history = task.bars[task.bars.index < window.out_of_sample_end]
+        if not (history.index >= window.out_of_sample_start).any():
+            per_window.append(None)
+            continue
+        result = out_of_sample(
+            spec, history, window.out_of_sample_start, task.costs, task.max_leverage
+        )
+        pieces.append(result)
+        per_window.append(
+            (
+                float(result.equity.iloc[-1] - 1.0),
+                sharpe_ratio(result.returns, periods_per_year(result.ledger.index)),
+            )
+        )
+    return per_window, stitch(pieces, task.costs) if pieces else None
+
+
 def walk_forward(
     base: dict,
     grid: dict[str, list],
     universe: dict[str, pd.DataFrame],
-    costs: CostModel,
+    costs: CostModel | Mapping[str, CostModel],
     end: pd.Timestamp,
     in_sample_years: float,
     out_of_sample_months: int,
     min_in_sample_share: float = 0.5,
+    pool: Pool | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> WalkForward:
+    """Re-optimise on each in-sample window, trade the next out-of-sample one, stitch.
+
+    Symbols run in parallel twice: every window's grid in-sample, then (once the parent has
+    chosen each window's parameters across symbols) every window out-of-sample.
+    """
+
     keys = list(grid)
     first = min(bars.index[0] for bars in universe.values())
     windows = make_windows(first, end, in_sample_years, out_of_sample_months)
-    rows, pieces = [], {symbol: [] for symbol in universe}
-    for window in windows:
-        in_sample = {}
-        for symbol, bars in universe.items():
-            part = bars[
-                (bars.index >= window.in_sample_start) & (bars.index < window.out_of_sample_start)
-            ]
-            span = window.out_of_sample_start - window.in_sample_start
-            if len(part) and (part.index[-1] - part.index[0]) >= span * min_in_sample_share:
-                in_sample[symbol] = part
+    specs = grid_specs(base, grid)
+    in_tasks = [
+        InSampleTask(
+            bars,
+            costs_for(costs, symbol),
+            specs,
+            windows,
+            min_in_sample_share,
+            cap_for(max_leverage, symbol),
+        )
+        for symbol, bars in universe.items()
+    ]
+    cells = dict(zip(universe, run(in_sample_symbol, in_tasks, pool), strict=True))
+
+    plan, bests = [], []
+    for number, window in enumerate(windows):
+        in_sample = {s: c[number] for s, c in cells.items() if c[number] is not None}
         if not in_sample:
             continue
-        board = run_grid(base, grid, in_sample, costs)
-        best = choose(board, keys)
+        best = choose(assemble_board(grid, specs, in_sample), keys)
         spec = base
         for key in keys:
             value = best[key]
             spec = set_path(spec, key, value.item() if hasattr(value, "item") else value)
-        returns, sharpes = [], []
-        for symbol, bars in universe.items():
-            history = bars[bars.index < window.out_of_sample_end]
-            if not (history.index >= window.out_of_sample_start).any():
-                continue
-            result = out_of_sample(spec, history, window.out_of_sample_start, costs)
-            pieces[symbol].append(result)
-            returns.append(float(result.equity.iloc[-1] - 1.0))
-            sharpes.append(sharpe_ratio(result.returns, periods_per_year(result.ledger.index)))
+        plan.append((window, spec))
+        bests.append((best, len(in_sample)))
+
+    out_tasks = [
+        OutOfSampleTask(bars, costs_for(costs, symbol), plan, cap_for(max_leverage, symbol))
+        for symbol, bars in universe.items()
+    ]
+    found = dict(zip(universe, run(out_of_sample_symbol, out_tasks, pool), strict=True))
+
+    rows = []
+    for number, ((window, _), (best, is_symbols)) in enumerate(zip(plan, bests, strict=True)):
+        scored = [f[0][number] for f in found.values() if f[0][number] is not None]
+        returns = [r for r, _ in scored]
+        sharpes = [sh for _, sh in scored]
         days = (window.out_of_sample_end - window.out_of_sample_start).days
         median_return = float(np.median(returns)) if returns else 0.0
         rows.append(
@@ -219,7 +306,7 @@ def walk_forward(
                 "oos_start": window.out_of_sample_start,
                 "oos_end": window.out_of_sample_end,
                 **{key: best[key] for key in keys},
-                "is_symbols": len(in_sample),
+                "is_symbols": is_symbols,
                 "is_median_sharpe": float(best["median_sharpe"]),
                 "is_median_cagr": float(best["median_cagr"]),
                 "oos_symbols": len(returns),
@@ -228,5 +315,5 @@ def walk_forward(
                 "oos_annualised": _annualised(median_return, days),
             }
         )
-    results = {symbol: stitch(parts, costs) for symbol, parts in pieces.items() if parts}
+    results = {symbol: f[1] for symbol, f in found.items() if f[1] is not None}
     return WalkForward(windows=pd.DataFrame(rows), results=results)

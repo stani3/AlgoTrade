@@ -8,9 +8,8 @@ from dataclasses import dataclass, fields
 import numpy as np
 import pandas as pd
 
+from algotrade import calendars
 from algotrade.indicators import entry_exit_state
-
-YEAR = pd.Timedelta(days=365.25)
 
 
 @dataclass(frozen=True)
@@ -75,11 +74,15 @@ def entry_exit(
 
 
 def bars_per_year(index: pd.DatetimeIndex) -> float:
-    return YEAR / (index[1] - index[0]) if len(index) > 1 else 365.25
+    """Bars per year of the market (see :mod:`algotrade.calendars`)."""
+
+    return calendars.bars_per_year(index)
 
 
 def bars_per_day(index: pd.DatetimeIndex) -> float:
-    return bars_per_year(index) / 365.25
+    """Bars per day, for parameters given in days; in session markets a day is a session."""
+
+    return calendars.bars_per_day(index)
 
 
 def scale_forecast(raw: pd.Series, min_periods: int, target_abs: float = 10.0) -> pd.Series:

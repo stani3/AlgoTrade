@@ -1,20 +1,24 @@
-"""Performance statistics for backtest results. Crypto trades 24/7, so a year is 365.25 days."""
+"""Performance statistics for backtest results.
+
+Per-bar statistics are annualised with the bars a year of that market holds
+(:mod:`algotrade.calendars`): 365.25 days for crypto, about 252 sessions for US stocks.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
+from algotrade import calendars
+from algotrade.calendars import YEAR  # noqa: F401  (re-exported: reports measure calendar time)
+
 from .engine import BacktestResult
 
-YEAR = pd.Timedelta(days=365.25)
 
+def periods_per_year(index: pd.DatetimeIndex, calendar: str | None = None) -> float:
+    """Bars per year of ``index``'s market (inferred from the index unless given)."""
 
-def periods_per_year(index: pd.DatetimeIndex) -> float:
-    if len(index) < 2:
-        return float("nan")
-    step = pd.Series(index).diff().median()
-    return YEAR / step
+    return calendars.periods_per_year(index, calendar)
 
 
 def max_drawdown(equity: pd.Series) -> float:

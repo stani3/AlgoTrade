@@ -26,6 +26,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from algotrade.config import data_root_override
 from algotrade.research.buildcheck import build_check
 from algotrade.research.cards import CardError, read_card
 from algotrade.research.criteria import load_criteria
@@ -35,7 +36,7 @@ from algotrade.research.holdout import holdout
 from algotrade.research.incubation import incubation_report
 from algotrade.research.incubation import start as start_incubation
 from algotrade.research.index import write_index
-from algotrade.research.journal import Journal, TrialLedger
+from algotrade.research.journal import Journal, LedgerFormatError, TrialLedger, migrate_trials
 from algotrade.research.registry import Refused, abandon, find_version, register, revise
 from algotrade.research.reproduce import reproduce
 from algotrade.research.seed import seed
@@ -44,7 +45,7 @@ from algotrade.research.validate import validate
 from algotrade.research.vcs import GitError
 from algotrade.research.workspace import Workspace
 
-PROBLEMS = (Refused, CardError, HoldoutViolation, GitError, FileNotFoundError)
+PROBLEMS = (Refused, CardError, HoldoutViolation, GitError, FileNotFoundError, LedgerFormatError)
 
 
 def cmd_seed(ws: Workspace, args: argparse.Namespace) -> int:
@@ -131,15 +132,19 @@ def cmd_feasibility(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
     result = feasibility(
-        ws, criteria, version, commit=not args.no_commit, report=not args.no_report
-    )
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report,
+        workers=args.workers,
+    )  # fmt: skip
     return print_result(result)
 
 
 def cmd_validate(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
-    result = validate(ws, criteria, version, commit=not args.no_commit, report=not args.no_report)
+    result = validate(
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report,
+        workers=args.workers,
+    )  # fmt: skip
     if result.extra.get("stake"):
         print(f"stake {result.extra['stake']:g}x")
     return print_result(result)
@@ -152,7 +157,7 @@ def cmd_holdout(ws: Workspace, args: argparse.Namespace) -> int:
     version = find_version(ws, args.idea, args.version)
     result = holdout(
         ws, criteria, version, force=args.force, reason=args.reason or "",
-        commit=not args.no_commit, report=not args.no_report,
+        commit=not args.no_commit, report=not args.no_report, workers=args.workers,
     )  # fmt: skip
     return print_result(result)
 
@@ -194,10 +199,26 @@ def cmd_incubation_report(ws: Workspace, args: argparse.Namespace) -> int:
     return 1 if outcome.status == "fail" else 0
 
 
+def cmd_migrate_trials(ws: Workspace, args: argparse.Namespace) -> int:
+    """USER ONLY, once: add the universe column to a trial ledger from before universes."""
+
+    rows = migrate_trials(ws.trials_path)
+    Journal(ws.journal_path).append("trials_migrated", rows=rows, column="universe")
+    print(f"Added the universe column (crypto) to {rows} trials in {ws.relative(ws.trials_path)}")
+    if not args.no_commit:
+        from algotrade.research import vcs
+
+        vcs.commit(
+            ws.root, [ws.trials_path, ws.journal_path], "research: trials gain a universe column"
+        )
+    return 0
+
+
 def cmd_report(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
-    print(f"Report written to {reproduce(ws, criteria, version, args.stage)}")
+    page = reproduce(ws, criteria, version, args.stage, workers=args.workers)
+    print(f"Report written to {page}")
     return 0
 
 
@@ -207,6 +228,11 @@ def parser() -> argparse.ArgumentParser:
     )
     main.add_argument("--root", type=Path, default=Path.cwd(), help="Repository root")
     main.add_argument("--no-commit", action="store_true", help="Write results but do not commit")
+    main.add_argument(
+        "--workers",
+        type=int,
+        help="Worker processes for per-symbol jobs (default: ALGOTRADE_WORKERS or CPUs - 2)",
+    )
     sub = main.add_subparsers(dest="command", required=True)
 
     sub.add_parser("seed", help="Import pre-journal experiments (once)").set_defaults(run=cmd_seed)
@@ -276,6 +302,10 @@ def parser() -> argparse.ArgumentParser:
     rep.add_argument("stage", choices=["feasibility", "validation", "holdout"])
     rep.add_argument("--version", type=int)
     rep.set_defaults(run=cmd_report)
+
+    sub.add_parser(
+        "migrate-trials", help="USER ONLY, once: add the universe column to trials.csv"
+    ).set_defaults(run=cmd_migrate_trials)
     return main
 
 
@@ -283,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
     args = parser().parse_args(argv)
-    ws = Workspace(root=args.root.resolve())
+    ws = Workspace(root=args.root.resolve(), data_root=data_root_override())
     try:
         return args.run(ws, args)
     except PROBLEMS as error:

@@ -182,3 +182,35 @@ def diagnostics(
         "excursions": excursions,
         "trades": trades,
     }
+
+
+def by_class(
+    per_symbol: pd.DataFrame, classes: dict[str, str], entry: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Per-symbol statistics summarised by asset class (in order of first appearance).
+
+    ``per_symbol`` has one row per symbol with ``sharpe``, ``cagr`` and ``trades`` (or
+    ``closed_trades``); ``entry`` is the entry test's table, whose profitable share per class
+    is added when given.
+    """
+
+    frame = per_symbol.assign(asset_class=[classes[symbol] for symbol in per_symbol.index])
+    grouped = frame.groupby("asset_class", sort=False)
+    trades = "trades" if "trades" in frame else "closed_trades"
+    table = pd.DataFrame(
+        {
+            "symbols": grouped.size(),
+            "median_sharpe": grouped["sharpe"].median(),
+            "positive_share": grouped["sharpe"].agg(lambda s: float((s > 0).mean())),
+            "median_trades": grouped[trades].median(),
+        }
+    )
+    if "cagr" in frame:
+        table["median_cagr"] = grouped["cagr"].median()
+    if entry is not None and len(entry):
+        cells = entry.assign(asset_class=[classes[s] for s in entry["symbol"]])
+        table["entry_profitable_share"] = cells.groupby("asset_class", sort=False)[
+            "profitable"
+        ].mean()
+    table.index.name = "asset_class"
+    return table

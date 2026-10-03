@@ -17,11 +17,13 @@ import json
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.engine import BacktestResult, run_backtest
 from algotrade.backtest.metrics import periods_per_year
-from algotrade.backtest.report import MIN_MC_TRADES, build_report
-from algotrade.backtest.report_html import write_report
+from algotrade.backtest.report import MIN_MC_TRADES
+from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.instruments import costs_for_symbols, describe, registry
+from algotrade.parallel import Pool
+from algotrade.validation.diagnostics import by_class
 from algotrade.validation.overfitting import deflated_sharpe, expected_max_sharpe, moments
 from algotrade.validation.sizing import choose_stake, closed_trade_returns, limits, trades_per_year
 from algotrade.validation.walkforward import WalkForward, walk_forward
@@ -32,7 +34,7 @@ from .criteria import Criteria, above, at_least, below
 from .dedup import spec_hash
 from .feasibility import require_ready
 from .journal import TrialLedger, VersionState
-from .split import dev_end, dev_universe, for_version, window
+from .split import dev_end, dev_universe, for_version, position_caps, version_symbols, window
 from .workspace import Workspace
 
 
@@ -53,14 +55,20 @@ def deflation(ws: Workspace, results_by_symbol: dict[str, BacktestResult]) -> di
     """Deflated Sharpe ratio of the median symbol against the whole trial ledger.
 
     Trial Sharpe ratios in the ledger are annualised medians across symbols; they are converted
-    to the per-bar scale of this record before their variance is used.
+    to the per-bar scale of this record before their variance is used. When the symbols trade
+    on different calendars (crypto every day, stocks on sessions) their per-bar Sharpe ratios
+    are not comparable, so each symbol is deflated on its own scale and the median is taken.
     """
 
-    ppy = float(np.median([periods_per_year(r.ledger.index) for r in results_by_symbol.values()]))
+    rates = [periods_per_year(r.ledger.index) for r in results_by_symbol.values()]
     trials = TrialLedger(ws.trials_path).distinct()
     metric = pd.to_numeric(trials["metric"], errors="coerce").dropna()
     count = len(trials)
-    variance = float(metric.var(ddof=1)) / ppy if len(metric) > 1 else 0.0
+    annual_variance = float(metric.var(ddof=1)) if len(metric) > 1 else 0.0
+    if len(set(rates)) > 1:
+        return _per_symbol_deflation(results_by_symbol, rates, count, annual_variance)
+    ppy = float(np.median(rates))
+    variance = annual_variance / ppy if len(metric) > 1 else 0.0
     stats = median_symbol_moments(results_by_symbol)
     return {
         **stats,
@@ -76,14 +84,62 @@ def deflation(ws: Workspace, results_by_symbol: dict[str, BacktestResult]) -> di
     }  # fmt: skip
 
 
+def _per_symbol_deflation(
+    results_by_symbol: dict[str, BacktestResult], rates: list[float], count: int, annual: float
+) -> dict:
+    rows = []
+    for result, ppy in zip(results_by_symbol.values(), rates, strict=True):
+        sharpe, observations, skew, kurtosis = moments(result.returns.to_numpy())
+        variance = annual / ppy
+        rows.append(
+            {
+                "sharpe": sharpe,
+                "observations": observations,
+                "skew": skew,
+                "kurtosis": kurtosis,
+                "trial_sharpe_variance_per_bar": variance,
+                "expected_max_sharpe_per_bar": expected_max_sharpe(count, variance),
+                "periods_per_year": ppy,
+                "annualised_sharpe": sharpe * float(np.sqrt(ppy)),
+                "deflated_sharpe": deflated_sharpe(
+                    sharpe, observations, skew, kurtosis, count, variance
+                ),
+            }
+        )
+    frame = pd.DataFrame(rows)
+    medians = {key: float(frame[key].median()) for key in frame}
+    medians["observations"] = int(frame["observations"].median())
+    return {**medians, "trials": count, "per_symbol": True}
+
+
+def stake_cap(criteria: Criteria, results_by_symbol: dict[str, BacktestResult]) -> float | None:
+    """The largest stake the instruments allow: each non-crypto instrument's ``max_leverage``
+    over the largest exposure the strategy took on it out of sample (crypto: no cap here)."""
+
+    found = registry(criteria)
+    caps = []
+    for symbol, result in results_by_symbol.items():
+        instrument = found.get(symbol)
+        peak = float(result.ledger["position"].abs().max()) if len(result.ledger) else 0.0
+        if instrument is not None and not instrument.is_crypto and peak > 0:
+            caps.append(instrument.max_leverage / peak)
+    return min(caps) if caps else None
+
+
 def benchmark(bars: pd.DataFrame, index: pd.DatetimeIndex, costs) -> BacktestResult:
     part = bars.loc[index]
     return run_backtest(part, pd.Series(1.0, index=part.index), costs)
 
 
-def run_walk_forward(ws: Workspace, criteria: Criteria, card) -> tuple[WalkForward, dict]:
-    universe = dev_universe(ws, criteria, card.timeframe)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
+def run_walk_forward(
+    ws: Workspace,
+    criteria: Criteria,
+    card,
+    pool: Pool | None = None,
+    symbols: list[str] | None = None,
+) -> tuple[WalkForward, dict]:
+    universe = dev_universe(ws, criteria, card.timeframe, symbols)
+    costs = costs_for_symbols(criteria, list(universe))
     wf = walk_forward(
         card.spec,
         card.optimise,
@@ -92,6 +148,8 @@ def run_walk_forward(ws: Workspace, criteria: Criteria, card) -> tuple[WalkForwa
         dev_end(criteria),
         criteria.get("validation.in_sample_years"),
         criteria.get("validation.out_of_sample_months"),
+        pool=pool,
+        max_leverage=position_caps(criteria, list(universe), card.spec),
     )
     return wf, universe
 
@@ -103,12 +161,20 @@ def validate(
     commit: bool = True,
     report: bool = True,
     seed: int = 0,
+    workers: int | None = None,
 ) -> results.StageResult:
     require_ready(ws, version, "validation", after="feasibility")
     criteria = for_version(ws, criteria, version)
     card = read_card(ws.root / version.card_path)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
-    wf, universe = run_walk_forward(ws, criteria, card)
+    with Pool(workers) as pool:
+        symbols = version_symbols(criteria, version)
+        wf, universe = run_walk_forward(ws, criteria, card, pool, symbols)
+        costs = costs_for_symbols(criteria, list(universe))
+        reports, sections = (
+            render_reports([(r, universe[s], costs[s]) for s, r in wf.results.items()], seed, pool)
+            if report and wf.results
+            else ([], [])
+        )
     v = "validation."
     checks = [
         at_least("walk-forward efficiency (OOS / IS annualised return)", wf.efficiency,
@@ -144,6 +210,7 @@ def validate(
         sizing = choose_stake(
             returns, trades_per_year(wf.results), criteria.get(v + "stake_multipliers"),
             criteria.get(v + "monte_carlo_runs"), criteria.get(v + "ruin"), davey, seed,
+            stake_cap(criteria, wf.results),
         )  # fmt: skip
         size = sizing.stake if sizing.stake is not None else 1.0
         row = sizing.table.loc[size]
@@ -170,6 +237,13 @@ def validate(
             for symbol, r in wf.results.items()
         }
     ).T.to_csv(folder / "oos_by_symbol.csv")
+    class_notes = []
+    if len(version.universe) > 1 and wf.results:
+        oos = pd.read_csv(folder / "oos_by_symbol.csv", index_col=0)
+        classes = {s: i.asset_class for s, i in registry(criteria).items() if s in oos.index}
+        table = by_class(oos, classes)
+        table.to_csv(folder / "oos_by_class.csv")
+        class_notes.append("Out-of-sample by asset class:\n\n" + _mc_markdown(table))
     if sizing is not None:
         sizing.table.to_csv(folder / "monte_carlo.csv")
     pd.DataFrame({"return": returns}).to_csv(folder / "oos_trade_returns.csv", index=False)
@@ -180,22 +254,18 @@ def validate(
 
     report_path = None
     if report and wf.results:
-        reports = [
-            build_report(r, benchmark=benchmark(universe[s], r.ledger.index, costs), seed=seed)
-            for s, r in wf.results.items()
-        ]
         settings = {
             "Idea": f"{version.idea} v{version.version}: {version.title}",
             "Walk-forward": f"{criteria.get(v + 'in_sample_years')} years in-sample, "
             f"{criteria.get(v + 'out_of_sample_months')} months out-of-sample, rolling; "
             "each window re-optimised on the pre-registered grid",
             "Base spec": json.dumps(card.spec),
-            "Data": f"{criteria.get('data.exchange')} {card.timeframe}, out-of-sample pieces of "
+            "Data": f"{describe(criteria, list(universe), card.timeframe)}, out-of-sample pieces of "
             f"the development period (before {dev_end(criteria):%Y-%m-%d})",
         }
         page = write_report(
             reports, ws.report_dir(version.idea, version.version, "validation"),
-            f"{version.idea} v{version.version} walk-forward out-of-sample", settings,
+            f"{version.idea} v{version.version} walk-forward out-of-sample", settings, sections,
         )  # fmt: skip
         report_path = ws.relative(page)
 
@@ -220,6 +290,7 @@ def validate(
         notes=[
             "Walk-forward windows:\n\n" + _windows_markdown(wf.windows),
             *(["Monte Carlo by size:\n\n" + _mc_markdown(sizing.table)] if sizing else []),
+            *class_notes,
         ],
         provenance=results.provenance(ws, criteria, version, spec_hash(card.spec), windows),
         report=report_path,

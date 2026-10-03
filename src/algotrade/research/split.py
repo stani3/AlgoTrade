@@ -14,7 +14,8 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-from algotrade.data.market import LEGACY_FUNDING_ALIGNMENT, load_market
+from algotrade.data.market import LEGACY_FUNDING_ALIGNMENT, load_instrument, load_market
+from algotrade.instruments import CRYPTO, registry, symbols_for
 
 from .criteria import Criteria
 from .journal import Journal, VersionState
@@ -128,7 +129,7 @@ def load_dev_bars(
 def dev_universe(
     ws: Workspace, criteria: Criteria, timeframe: str, symbols: list[str] | None = None
 ) -> dict[str, pd.DataFrame]:
-    names = symbols or criteria.get("data.symbols")
+    names = symbols or symbols_for(criteria, (CRYPTO,))
     return {s: load_dev_bars(ws, criteria, s, timeframe) for s in names}
 
 
@@ -159,6 +160,35 @@ def load_full_bars(ws: Workspace, criteria: Criteria, symbol: str, timeframe: st
 
 
 def _load(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.DataFrame:
-    exchange = criteria.get("data.exchange")
+    """A registered instrument from its source; any other symbol as a perpetual on the
+    criteria's exchange (as before instruments were registered). Perpetuals get their funding
+    with the criteria's ``data.funding_alignment``."""
+
     alignment = funding_alignment(criteria)
-    return load_market(ws.raw_data, exchange, symbol, timeframe, funding_alignment=alignment)
+    instrument = registry(criteria).get(symbol)
+    if instrument is None:
+        exchange = criteria.get("data.exchange")
+        return load_market(ws.raw_data, exchange, symbol, timeframe, funding_alignment=alignment)
+    return load_instrument(ws.raw_data, instrument, timeframe, funding_alignment=alignment)
+
+
+def version_symbols(criteria: Criteria, version: VersionState) -> list[str]:
+    """The symbols an idea version is tested on: those journaled when its card was registered,
+    or (cards from before universes) the crypto symbols in criteria."""
+
+    if version.symbols:
+        return list(version.symbols)
+    return symbols_for(criteria, version.universe)
+
+
+def position_caps(criteria: Criteria, symbols: list[str], spec: dict) -> dict[str, float] | float:
+    """How far a position strategy's exposure may go on each symbol: the instrument's
+    ``max_leverage`` (crypto 1). Bracket strategies always trade size 1 here: their sizing is
+    the stake that validation chooses."""
+
+    from algotrade.strategies import BracketStrategy, from_spec
+
+    if isinstance(from_spec(spec), BracketStrategy):
+        return 1.0
+    found = registry(criteria)
+    return {s: found[s].max_leverage if s in found else 1.0 for s in symbols}

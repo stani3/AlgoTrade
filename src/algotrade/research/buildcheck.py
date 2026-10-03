@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
+from algotrade.instruments import universe_key
 from algotrade.strategies.catalog import refresh_ideas
 
 from . import fingerprint, results
@@ -212,12 +213,17 @@ def build_check(
     tolerance = criteria.get("dedup.param_tolerance")
     others = {k: v for k, v in ideas.items() if k != version.idea}
     own = {version.idea: ideas[version.idea]} if version.idea in ideas else {}
-    found = conflicts(others, card.spec, card.optimise, card.timeframe, tolerance)
+    universe = version.universe
+    found = conflicts(
+        others, card.spec, card.optimise, card.timeframe, tolerance, universe=universe
+    )
     # The user's --retest at registration also covers the failed ideas it overlaps here.
     found = [c for c in found if not (c.failed and version.retest)]
     found += [
         c
-        for c in conflicts(own, card.spec, card.optimise, card.timeframe, tolerance, version.idea)
+        for c in conflicts(
+            own, card.spec, card.optimise, card.timeframe, tolerance, version.idea, universe
+        )
         if c.kind == "exact" and c.version != version.version
     ]
     failures = [f"duplicate: {c.describe()}" for c in found]
@@ -248,7 +254,7 @@ def build_check(
     )
     extra_paths = [p for _, m, t in files for p in (m, t)]
     if result.verdict == "PASS":
-        key = store.key(own_hash, card.timeframe)
+        key = store.key(own_hash, card.timeframe, universe_key(universe))
         extra_paths += store.save(
             key,
             frame,

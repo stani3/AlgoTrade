@@ -14,13 +14,14 @@ A cell's profit is scored one of two ways:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from algotrade.backtest.bracket import BracketSignals, simulate_bracket
-from algotrade.backtest.costs import CostModel
+from algotrade.backtest.costs import CostModel, costs_for
 from algotrade.indicators import atr
 from algotrade.strategies import BracketStrategy, Strategy
 
@@ -67,50 +68,76 @@ class EntryTest:
         )
 
 
-def run_entry_test(
+def entry_rows(
     strategy: Strategy,
-    universe: dict[str, pd.DataFrame],
+    symbol: str,
+    bars: pd.DataFrame,
     costs: CostModel,
     exit_bars: list[int],
     stop_atr: float,
     target_atr: float,
     atr_length: int,
     scoring: str = "compounded",
-) -> EntryTest:
+    sides: tuple[pd.Series, pd.Series] | None = None,
+) -> list[dict]:
+    """One symbol's (exit, symbol) cells; ``sides`` are its entries if already computed."""
+
+    long, short = sides if sides is not None else entry_signals(strategy, bars)
+    volatility = atr(bars["high"], bars["low"], bars["close"], atr_length)
+    never = pd.Series(np.inf, index=bars.index)
+    exits = {f"{n} bars": (never, never, n) for n in exit_bars}
+    exits[f"{stop_atr:g}/{target_atr:g} ATR bracket"] = (
+        stop_atr * volatility,
+        target_atr * volatility,
+        0,
+    )
+    rows = []
+    for name, (stop, target, max_bars) in exits.items():
+        signals = BracketSignals(long, short, stop, target)
+        whole = simulate_bracket(bars, signals, costs, max_bars=max_bars)
+        # A tiny size never wipes out the account, so every trade happens; dividing by the
+        # size gives each trade's return per unit traded (fees and funding scale with it).
+        small = simulate_bracket(bars, signals, costs, leverage=FIXED_SIZE, max_bars=max_bars)
+        closed = small.trades[~small.trades["open"].astype(bool)]
+        per_unit = closed["return"] / FIXED_SIZE
+        fixed = cell_profit(per_unit, float(small.equity.iloc[-1]), "fixed")
+        compounded = cell_profit(per_unit, float(whole.equity.iloc[-1]), "compounded")
+        profit = fixed if scoring == "fixed" else compounded
+        rows.append(
+            {
+                "exit": name,
+                "symbol": symbol,
+                "trades": len(closed),
+                "win_rate": float((per_unit > 0).mean()) if len(closed) else 0.0,
+                "avg_trade": float(per_unit.mean()) if len(closed) else 0.0,
+                "net_return": compounded,
+                "fixed_return": fixed,
+                "profitable": bool(profit > 0 and len(closed) > 0),
+            }
+        )
+    return rows
+
+
+def check_scoring(scoring: str) -> None:
     if scoring not in SCORINGS:
         raise ValueError(f"entry test scoring must be one of {sorted(SCORINGS)}, not {scoring!r}")
+
+
+def run_entry_test(
+    strategy: Strategy,
+    universe: dict[str, pd.DataFrame],
+    costs: CostModel | Mapping[str, CostModel],
+    exit_bars: list[int],
+    stop_atr: float,
+    target_atr: float,
+    atr_length: int,
+    scoring: str = "compounded",
+) -> EntryTest:
+    check_scoring(scoring)
     rows = []
     for symbol, bars in universe.items():
-        long, short = entry_signals(strategy, bars)
-        volatility = atr(bars["high"], bars["low"], bars["close"], atr_length)
-        never = pd.Series(np.inf, index=bars.index)
-        exits = {f"{n} bars": (never, never, n) for n in exit_bars}
-        exits[f"{stop_atr:g}/{target_atr:g} ATR bracket"] = (
-            stop_atr * volatility,
-            target_atr * volatility,
-            0,
-        )
-        for name, (stop, target, max_bars) in exits.items():
-            signals = BracketSignals(long, short, stop, target)
-            whole = simulate_bracket(bars, signals, costs, max_bars=max_bars)
-            # A tiny size never wipes out the account, so every trade happens; dividing by the
-            # size gives each trade's return per unit traded (fees and funding scale with it).
-            small = simulate_bracket(bars, signals, costs, leverage=FIXED_SIZE, max_bars=max_bars)
-            closed = small.trades[~small.trades["open"].astype(bool)]
-            per_unit = closed["return"] / FIXED_SIZE
-            fixed = cell_profit(per_unit, float(small.equity.iloc[-1]), "fixed")
-            compounded = cell_profit(per_unit, float(whole.equity.iloc[-1]), "compounded")
-            profit = fixed if scoring == "fixed" else compounded
-            rows.append(
-                {
-                    "exit": name,
-                    "symbol": symbol,
-                    "trades": len(closed),
-                    "win_rate": float((per_unit > 0).mean()) if len(closed) else 0.0,
-                    "avg_trade": float(per_unit.mean()) if len(closed) else 0.0,
-                    "net_return": compounded,
-                    "fixed_return": fixed,
-                    "profitable": bool(profit > 0 and len(closed) > 0),
-                }
-            )
+        rows += entry_rows(
+            strategy, symbol, bars, costs_for(costs, symbol), exit_bars, stop_atr, target_atr,
+            atr_length, scoring,
+        )  # fmt: skip
     return EntryTest(pd.DataFrame(rows))

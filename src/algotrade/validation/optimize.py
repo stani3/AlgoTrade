@@ -10,52 +10,91 @@ from __future__ import annotations
 
 import itertools
 import json
+from collections.abc import Mapping
 
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import CostModel
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.engine import BacktestResult
 from algotrade.backtest.metrics import aggregate, summarize
 from algotrade.backtest.runner import backtest
+from algotrade.parallel import Pool, run
 from algotrade.research.dedup import grid_specs, spec_hash
 from algotrade.strategies import from_spec
 
+Costs = CostModel | Mapping[str, CostModel]
+Caps = float | Mapping[str, float]  # max_leverage: one for every symbol, or one per symbol
+
 
 def evaluate(
-    spec: dict, universe: dict[str, pd.DataFrame], costs: CostModel, max_leverage: float = 1.0
+    spec: dict, universe: dict[str, pd.DataFrame], costs: Costs, max_leverage: Caps = 1.0
 ) -> tuple[dict[str, BacktestResult], pd.DataFrame]:
     """Backtest one configuration on every symbol: results and per-symbol statistics."""
 
     strategy = from_spec(spec)
-    results = {s: backtest(strategy, bars, costs, max_leverage) for s, bars in universe.items()}
+    results = {
+        s: backtest(strategy, bars, costs_for(costs, s), cap_for(max_leverage, s))
+        for s, bars in universe.items()
+    }
     return results, pd.DataFrame({s: summarize(r) for s, r in results.items()}).T
+
+
+def grid_symbol(
+    specs: list[dict], bars: pd.DataFrame, costs: CostModel, max_leverage: float = 1.0
+) -> list[tuple[dict, bool]]:
+    """Every grid configuration on one symbol: its statistics and whether it was killed."""
+
+    out = []
+    for spec in specs:
+        result = backtest(from_spec(spec), bars, costs, max_leverage)
+        out.append((summarize(result), "killed_at" in result.meta))
+    return out
+
+
+def _grid_job(args: tuple) -> list[tuple[dict, bool]]:
+    return grid_symbol(*args)
+
+
+def assemble_board(
+    grid: dict[str, list], specs: list[dict], by_symbol: dict[str, list[tuple[dict, bool]]]
+) -> pd.DataFrame:
+    """The grid table from per-symbol results (``by_symbol`` in universe order)."""
+
+    rows = []
+    combos = list(itertools.product(*grid.values())) if grid else [()]
+    for number, (combo, spec) in enumerate(zip(combos, specs, strict=True)):
+        per_symbol = pd.DataFrame({s: cells[number][0] for s, cells in by_symbol.items()}).T
+        killed = [cells[number][1] for cells in by_symbol.values()]
+        rows.append(
+            {
+                **dict(zip(grid, combo, strict=True)),
+                **aggregate(per_symbol),
+                "median_trades": float(per_symbol["trades"].median()),
+                "killed": float(np.mean(killed)),
+                "spec_hash": spec_hash(spec),
+                "spec": json.dumps(spec, sort_keys=True),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def run_grid(
     base: dict,
     grid: dict[str, list],
     universe: dict[str, pd.DataFrame],
-    costs: CostModel,
-    max_leverage: float = 1.0,
+    costs: Costs,
+    max_leverage: Caps = 1.0,
+    pool: Pool | None = None,
 ) -> pd.DataFrame:
     """One row per grid combination: its parameters, cross-symbol statistics and spec hash."""
 
-    rows = []
-    combos = list(itertools.product(*grid.values())) if grid else [()]
-    for combo, spec in zip(combos, grid_specs(base, grid), strict=True):
-        results, per_symbol = evaluate(spec, universe, costs, max_leverage)
-        rows.append(
-            {
-                **dict(zip(grid, combo, strict=True)),
-                **aggregate(per_symbol),
-                "median_trades": float(per_symbol["trades"].median()),
-                "killed": float(np.mean(["killed_at" in r.meta for r in results.values()])),
-                "spec_hash": spec_hash(spec),
-                "spec": json.dumps(spec, sort_keys=True),
-            }
-        )
-    return pd.DataFrame(rows)
+    specs = grid_specs(base, grid)
+    jobs = [
+        (specs, bars, costs_for(costs, s), cap_for(max_leverage, s)) for s, bars in universe.items()
+    ]
+    cells = run(_grid_job, jobs, pool)
+    return assemble_board(grid, specs, dict(zip(universe, cells, strict=True)))
 
 
 def profitable_share(board: pd.DataFrame) -> float:

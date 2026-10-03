@@ -88,8 +88,12 @@ class FingerprintStore:
         self.directory = directory
 
     @staticmethod
-    def key(spec_hash: str, timeframe: str) -> str:
-        return f"{spec_hash}_{timeframe}"
+    def key(spec_hash: str, timeframe: str, universe: str = "crypto") -> str:
+        """``<spec hash>_<timeframe>``, plus ``_<universe>`` for ideas about other asset
+        classes (the positions are always measured on the crypto reference symbols)."""
+
+        suffix = "" if universe == "crypto" else f"_{universe}"
+        return f"{spec_hash}_{timeframe}{suffix}"
 
     def paths(self, key: str) -> tuple[Path, Path]:
         return self.directory / f"{key}.parquet", self.directory / f"{key}.json"

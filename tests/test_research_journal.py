@@ -99,7 +99,7 @@ def test_events_for_unknown_ideas_or_versions_are_ignored(tmp_path) -> None:
 
 def test_trial_ledger_counts_distinct_configurations(tmp_path) -> None:
     ledger = TrialLedger(tmp_path / "trials.csv")
-    assert ledger.count() == 0 and list(ledger.frame().columns) == TRIAL_COLUMNS
+    assert ledger.count() == 0 and list(ledger.frame().columns) == [*TRIAL_COLUMNS, "universe"]
     assert ledger.add([]) == 0
     rows = [
         {"idea": "i001", "spec_hash": "aaa", "timeframe": "4h", "metric": 0.1, "spec": {"a": 1}},
