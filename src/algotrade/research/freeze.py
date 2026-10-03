@@ -1,7 +1,8 @@
 """``research freeze``: fix the strategy that passed the holdout, tag it, write the decision page.
 
 ``frozen.json`` is exactly what incubation trades: the spec with the parameters chosen from the
-feasibility plateau, the timeframe, the stake from the walk-forward Monte Carlo and the symbols.
+feasibility plateau, the timeframe, the stake from the walk-forward Monte Carlo, the symbols and
+the funding alignment the strategy was tested with.
 The commit is tagged ``strategy/<id>-v<n>``, so the code that was validated can always be
 checked out. ``decision.md`` is the one-page summary shown to the user, with the reports, before
 they decide whether to incubate.
@@ -19,6 +20,7 @@ from .holdout import load_result
 from .index import write_index
 from .journal import Journal, VersionState, now
 from .registry import Refused
+from .split import for_version, funding_alignment
 from .workspace import STAGES, Workspace
 
 
@@ -133,6 +135,7 @@ def freeze(ws: Workspace, criteria: Criteria, version: VersionState, commit: boo
         raise Refused(f"{version.idea} v{version.version} needs a passing holdout first")
     if version.frozen is not None:
         raise Refused(f"{version.idea} v{version.version} is already frozen ({version.frozen})")
+    criteria = for_version(ws, criteria, version)
     holdout = load_result(ws, version, "holdout")
     validation = load_result(ws, version, "validation")
     frozen = {
@@ -144,6 +147,7 @@ def freeze(ws: Workspace, criteria: Criteria, version: VersionState, commit: boo
         "stake": validation.get("stake"),
         "symbols": criteria.get("data.symbols"),
         "exchange": criteria.get("data.exchange"),
+        "funding_alignment": funding_alignment(criteria),
         "criteria_hash": criteria.hash,
         "frozen_at": now(),
         "tag": tag_name(version),

@@ -6,18 +6,20 @@ import pandas as pd
 import pytest
 from research_helpers import commits, draft, git, make_workspace
 
-from algotrade.data.exchange import MarketId, ohlcv_path
+from algotrade.data.exchange import MarketId, funding_path, ohlcv_path
+from algotrade.data.market import FUNDING_ALIGNMENTS
 from algotrade.research import holdout as holdout_module
 from algotrade.research import validate as validate_module
 from algotrade.research.buildcheck import build_check
 from algotrade.research.criteria import load_criteria
 from algotrade.research.feasibility import feasibility
+from algotrade.research.fingerprint import FingerprintStore
 from algotrade.research.freeze import freeze, weaknesses
-from algotrade.research.holdout import holdout
+from algotrade.research.holdout import holdout, load_result
 from algotrade.research.journal import Journal
 from algotrade.research.registry import Refused, find_version, register
 from algotrade.research.reproduce import reproduce
-from algotrade.research.split import HoldoutViolation
+from algotrade.research.split import FUNDING_ALIGNMENT, HoldoutViolation, recorded_alignment
 from algotrade.research.validate import deflation, validate
 from algotrade.research.workspace import Workspace
 from scripts import research as cli
@@ -282,6 +284,49 @@ def test_reproduction_refuses_changed_data_or_numbers(copy) -> None:
     bars.to_parquet(bars_file, index=False)
     with pytest.raises(Refused, match="market data changed .* BTC"):
         reproduce(ws, criteria, version, "validation")
+
+
+def test_a_tested_version_keeps_its_funding_alignment(copy) -> None:
+    ws, criteria = copy
+    tested = recorded_alignment(load_result(ws, find_version(ws, "i001"), "build"))
+    assert tested == criteria.get("data.funding_alignment")
+    # The user switches the alignment after i001 v1 was built, tested and validated.
+    other = next(name for name in FUNDING_ALIGNMENTS if name != tested)
+    switched = criteria.with_value(FUNDING_ALIGNMENT, other)
+    assert holdout(ws, switched, find_version(ws, "i001"), report=False).verdict == "PASS"
+    frozen = freeze(ws, switched, find_version(ws, "i001"), commit=False)
+    version = find_version(ws, "i001")
+    for stage in ("build", "feasibility", "validation", "holdout"):
+        assert recorded_alignment(load_result(ws, version, stage)) == tested, stage
+    assert frozen["funding_alignment"] == tested
+    store = FingerprintStore(ws.fingerprints_dir)
+    stored = store.keys()  # only i001 v1 was built
+    assert [store.load(key)[1]["funding_alignment"] for key in stored] == [tested]
+
+
+def test_reports_reproduce_with_the_alignment_they_recorded(copy) -> None:
+    ws, criteria = copy
+    version = find_version(ws, "i001")
+    # Stamp every settlement 23 ms late, as Binance does: rounding to the second gives back the
+    # data the results were computed on, the raw timestamps no longer do.
+    for symbol in ("BTC", "ETH", "SOL"):
+        path = funding_path(ws.raw_data, MarketId("binanceusdm", symbol))
+        frame = pd.read_parquet(path)
+        late = frame.assign(timestamp=frame["timestamp"] + pd.Timedelta("23ms"))
+        late.to_parquet(path, index=False)
+    path = ws.stage_dir("i001", "fast-trend", 1, "feasibility") / "result.json"
+    saved = json.loads(path.read_text())
+
+    def reproduced(recorded: str, now: str) -> str:
+        saved["provenance"]["funding_alignment"] = recorded  # as if recorded with it
+        path.write_text(json.dumps(saved))
+        return reproduce(ws, criteria.with_value(FUNDING_ALIGNMENT, now), version, "feasibility")
+
+    # Recorded with raw timestamps, so reproduced with them whatever the criteria say now.
+    with pytest.raises(Refused, match="market data changed"):
+        reproduced("raw_timestamp", now="nearest_second")
+    page = reproduced("nearest_second", now="raw_timestamp")
+    assert page == "reports/research/i001/v1/feasibility/report.html"
 
 
 # --- command line ------------------------------------------------------------------------------------

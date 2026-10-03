@@ -38,7 +38,7 @@ from .holdout import BOOTSTRAP_BLOCK_DAYS
 from .index import write_index
 from .journal import Journal, VersionState, now
 from .registry import Refused
-from .split import load_full_bars, window
+from .split import for_version, load_full_bars, window
 from .validate import benchmark
 from .workspace import Workspace
 
@@ -121,6 +121,7 @@ def incubation_report(
         raise Refused(f"{version.idea} v{version.version} is not incubating")
     if "incubation" in version.stages:
         raise Refused(f"{version.idea} v{version.version} already has an incubation verdict")
+    criteria = for_version(ws, criteria, version)
     frozen = frozen_strategy(ws, version)
     started = pd.Timestamp(version.incubation_start)
     costs = EXCHANGE_COSTS[frozen["exchange"]]

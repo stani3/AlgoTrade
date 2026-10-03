@@ -10,7 +10,7 @@ from pathlib import Path
 from . import vcs
 from .criteria import Check, Criteria
 from .journal import Journal, VersionState, now
-from .split import DataWindow
+from .split import DataWindow, funding_alignment
 from .workspace import Workspace
 
 NEWLINE = chr(10)
@@ -75,6 +75,7 @@ def provenance(
         "created": now(),
         "commit": vcs.head(ws.root),
         "criteria_hash": criteria.hash,
+        "funding_alignment": funding_alignment(criteria),
         "card_hash": version.card_hash,
         "spec_hash": spec_hash,
         "data": [w.to_dict() for w in windows],

@@ -8,16 +8,19 @@ only then may :func:`load_full_bars` be used.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import asdict, dataclass
 
 import numpy as np
 import pandas as pd
 
-from algotrade.data.market import load_market
+from algotrade.data.market import LEGACY_FUNDING_ALIGNMENT, load_market
 
 from .criteria import Criteria
 from .journal import Journal, VersionState
-from .workspace import Workspace
+from .workspace import STAGES, Workspace
+
+FUNDING_ALIGNMENT = "data.funding_alignment"
 
 
 class HoldoutViolation(RuntimeError):
@@ -26,6 +29,38 @@ class HoldoutViolation(RuntimeError):
 
 def dev_end(criteria: Criteria) -> pd.Timestamp:
     return pd.Timestamp(criteria.get("data.dev_end"), tz="UTC")
+
+
+def funding_alignment(criteria: Criteria) -> str:
+    """How funding settlements are put on bars (see ``align_funding``); legacy when unset."""
+
+    return criteria.get(FUNDING_ALIGNMENT, LEGACY_FUNDING_ALIGNMENT)
+
+
+def recorded_alignment(result: dict) -> str:
+    """The funding alignment a committed ``result.json`` was computed with.
+
+    Results recorded before ``data.funding_alignment`` existed do not name one: they all used
+    the legacy alignment.
+    """
+
+    return result["provenance"].get("funding_alignment", LEGACY_FUNDING_ALIGNMENT)
+
+
+def for_version(ws: Workspace, criteria: Criteria, version: VersionState) -> Criteria:
+    """``criteria`` with the funding alignment this idea version is tested with.
+
+    A version keeps the alignment its recorded results were computed with through every later
+    stage; only a version with no result yet follows ``criteria.yaml``. Changing
+    ``data.funding_alignment`` therefore never changes the data a tested version sees.
+    """
+
+    for stage in STAGES:
+        path = ws.stage_dir(version.idea, version.slug, version.version, stage) / "result.json"
+        if path.exists():
+            recorded = json.loads(path.read_text(encoding="utf-8"))
+            return criteria.with_value(FUNDING_ALIGNMENT, recorded_alignment(recorded))
+    return criteria
 
 
 def _stamp(value: str | pd.Timestamp) -> pd.Timestamp:
@@ -82,7 +117,7 @@ def load_dev_bars(
         raise HoldoutViolation(
             f"requested data up to {end}, but development data ends at {cutoff:%Y-%m-%d}"
         )
-    bars = load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
+    bars = _load(ws, criteria, symbol, timeframe)
     stop = cutoff if end is None else _stamp(end)
     bars = bars[bars.index < stop]
     if start is not None:
@@ -120,4 +155,10 @@ def open_holdout(
 def load_full_bars(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.DataFrame:
     """All stored bars. Only for the holdout stage (after :func:`open_holdout`) and incubation."""
 
-    return load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
+    return _load(ws, criteria, symbol, timeframe)
+
+
+def _load(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.DataFrame:
+    exchange = criteria.get("data.exchange")
+    alignment = funding_alignment(criteria)
+    return load_market(ws.raw_data, exchange, symbol, timeframe, funding_alignment=alignment)

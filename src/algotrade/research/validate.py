@@ -32,7 +32,7 @@ from .criteria import Criteria, above, at_least, below
 from .dedup import spec_hash
 from .feasibility import require_ready
 from .journal import TrialLedger, VersionState
-from .split import dev_end, dev_universe, window
+from .split import dev_end, dev_universe, for_version, window
 from .workspace import Workspace
 
 
@@ -105,6 +105,7 @@ def validate(
     seed: int = 0,
 ) -> results.StageResult:
     require_ready(ws, version, "validation", after="feasibility")
+    criteria = for_version(ws, criteria, version)
     card = read_card(ws.root / version.card_path)
     costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
     wf, universe = run_walk_forward(ws, criteria, card)

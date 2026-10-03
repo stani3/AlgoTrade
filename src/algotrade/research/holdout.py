@@ -30,7 +30,7 @@ from .dedup import spec_hash
 from .feasibility import require_ready
 from .journal import Journal, VersionState
 from .registry import Refused
-from .split import dev_end, load_full_bars, open_holdout, window
+from .split import dev_end, for_version, load_full_bars, open_holdout, window
 from .validate import benchmark
 from .workspace import Workspace
 
@@ -71,6 +71,7 @@ def holdout(
     seed: int = 0,
 ) -> results.StageResult:
     require_ready(ws, version, "holdout", after="validation", repeat=force)
+    criteria = for_version(ws, criteria, version)
     feasibility = load_result(ws, version, "feasibility")
     validation = ws.stage_dir(version.idea, version.slug, version.version, "validation")
     oos = pd.read_parquet(validation / "oos_returns.parquet")
