@@ -32,7 +32,12 @@ python -m scripts.run_backtest --strategy ewmac --quote USDC --symbols BTC,ETH -
 
 Files land in `data/raw/<exchange>/<SYMBOL>_<tf>.parquet` and `<SYMBOL>_funding.parquet`.
 `algotrade.data.market.load_market()` returns bars indexed by bar-open time (UTC) with each funding
-settlement summed into the bar during which it is charged.
+settlement summed into the bar during which it is charged. Binance stamps settlements 0-47 ms
+after the hour: `funding_alignment="nearest_second"` rounds each stamp to the second, so every
+settlement lands on the bar that closes at its settlement hour. The default, `raw_timestamp`,
+takes the stamp as recorded and so charges the ~45% stamped late one bar late; it stays the
+default because recorded research results were computed with it (see `data.funding_alignment`
+under Research pipeline). The command-line scripts use the default.
 
 ### Stocks, ETFs and forex
 
@@ -257,6 +262,13 @@ Rules the code enforces:
   fingerprint are committed: each stage makes a local commit (never a push). Tested strategy
   versions never change behaviour; `tests/ideas/test_fingerprints.py` recomputes every stored
   fingerprint to prove it.
+- **Funding alignment.** `data.funding_alignment` in `criteria.yaml` says how funding
+  settlements are put on bars: `raw_timestamp` (what a missing key means, and what every result
+  before the key existed used) or `nearest_second` (see Data). Results, fingerprints and
+  `frozen.json` record the alignment they used. An idea version keeps the alignment of its first
+  result through every later stage, `research report` reproduces with the recorded one, and the
+  fingerprint test recomputes each fingerprint with its own, so changing the key only affects
+  versions that have no result yet.
 
 Feasibility (development data only) runs Davey's limited testing: the entry test (the
 strategy's entries with 5/10/20-bar time exits and a 2/4 ATR bracket; `feasibility.entry_scoring`

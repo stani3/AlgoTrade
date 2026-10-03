@@ -14,27 +14,62 @@ import pandas as pd
 from .exchange import TIMEFRAMES, MarketId, funding_path, ohlcv_path
 from .files import bars_path, funding_file, read_bars
 
+# How a settlement's recorded timestamp is turned into the instant it was charged.
+# ``raw_timestamp`` is what every research result before ``data.funding_alignment`` used; it stays
+# the default so those results keep reproducing.
+FUNDING_ALIGNMENTS = ("raw_timestamp", "nearest_second")
+LEGACY_FUNDING_ALIGNMENT = "raw_timestamp"
 
-def align_funding(bar_open: pd.DatetimeIndex, timeframe: str, funding: pd.DataFrame) -> pd.Series:
+
+def align_funding(
+    bar_open: pd.DatetimeIndex,
+    timeframe: str,
+    funding: pd.DataFrame,
+    alignment: str = LEGACY_FUNDING_ALIGNMENT,
+) -> pd.Series:
     """Sum funding settlements into the bar during which they are charged.
 
     A settlement at time ``t`` is charged to whoever holds the position at ``t``, i.e. the bar
     whose interval ``(open, open + length]`` contains ``t``. A settlement exactly on a bar
     boundary therefore belongs to the bar that closes there, not the one that opens there.
+
+    Binance records settlements 0-47 ms after the hour (08:00:00.023, say), so ``alignment``
+    decides what ``t`` is:
+
+    * ``nearest_second``: the recorded timestamp rounded to the nearest second, so every
+      settlement is charged to the bar that closes at its settlement hour.
+    * ``raw_timestamp`` (legacy): the recorded timestamp as it is, which charges the ~45% of
+      settlements stamped a few milliseconds late one bar late, to the bar that opens at the
+      settlement hour (on 1h, 4h and 1d bars alike).
     """
 
+    if alignment not in FUNDING_ALIGNMENTS:
+        raise ValueError(
+            f"unknown funding alignment {alignment!r}; expected one of {FUNDING_ALIGNMENTS}"
+        )
     length = pd.Timedelta(TIMEFRAMES[timeframe])
     if funding.empty:
         return pd.Series(0.0, index=bar_open, name="funding_rate")
-    owner = (funding["timestamp"] - pd.Timedelta("1ms")).dt.floor(length)
+    charged = funding["timestamp"]
+    if alignment == "nearest_second":
+        charged = charged.dt.round("1s")
+    owner = (charged - pd.Timedelta("1ms")).dt.floor(length)
     per_bar = funding.groupby(owner)["funding_rate"].sum()
     return per_bar.reindex(bar_open, fill_value=0.0).rename("funding_rate")
 
 
 def load_market(
-    root: Path, exchange: str, base: str, timeframe: str, quote: str = "USDT"
+    root: Path,
+    exchange: str,
+    base: str,
+    timeframe: str,
+    quote: str = "USDT",
+    funding_alignment: str = LEGACY_FUNDING_ALIGNMENT,
 ) -> pd.DataFrame:
-    """Return OHLCV bars indexed by bar-open time (UTC) with a ``funding_rate`` column."""
+    """Return OHLCV bars indexed by bar-open time (UTC) with a ``funding_rate`` column.
+
+    ``funding_alignment`` is passed to :func:`align_funding`.
+    """
 
     market = MarketId(exchange=exchange, base=base.upper(), quote=quote.upper())
     path = ohlcv_path(root, market, timeframe)
@@ -51,8 +86,13 @@ def load_market(
         if fpath.exists()
         else pd.DataFrame(columns=["timestamp", "funding_rate"])
     )
-    bars["funding_rate"] = align_funding(bars.index, timeframe, funding)
-    bars.attrs.update(exchange=exchange, symbol=market.name, timeframe=timeframe)
+    bars["funding_rate"] = align_funding(bars.index, timeframe, funding, funding_alignment)
+    bars.attrs.update(
+        exchange=exchange,
+        symbol=market.name,
+        timeframe=timeframe,
+        funding_alignment=funding_alignment,
+    )
     return bars
 
 
@@ -75,15 +115,24 @@ def align_to_bars(bar_open: pd.DatetimeIndex, charges: pd.DataFrame) -> pd.Serie
     return pd.Series(sums, index=bar_open, name="funding_rate")
 
 
-def load_instrument(root: Path, instrument, timeframe: str) -> pd.DataFrame:
+def load_instrument(
+    root: Path,
+    instrument,
+    timeframe: str,
+    funding_alignment: str = LEGACY_FUNDING_ALIGNMENT,
+) -> pd.DataFrame:
     """Bars of an :class:`algotrade.instruments.Instrument`, with its ``funding_rate``.
 
-    Crypto goes through :func:`load_market` exactly as before. Other instruments start at the
-    instrument's first date and carry their financing charges (zero until downloaded).
+    Crypto goes through :func:`load_market` exactly as before, with ``funding_alignment``. Other
+    instruments start at the instrument's first date and carry their financing charges (zero
+    until downloaded), which :func:`align_to_bars` places whatever the alignment says.
     """
 
     if instrument.is_crypto:
-        return load_market(root, instrument.source, instrument.symbol, timeframe, instrument.quote)
+        return load_market(
+            root, instrument.source, instrument.symbol, timeframe, instrument.quote,
+            funding_alignment,
+        )  # fmt: skip
     bars = read_bars(bars_path(root, instrument.source, instrument.symbol, timeframe))
     if bars is None:
         raise FileNotFoundError(

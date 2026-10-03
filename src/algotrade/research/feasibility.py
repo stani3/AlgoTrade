@@ -48,7 +48,7 @@ from .criteria import Check, Criteria, at_least
 from .dedup import set_path, spec_hash
 from .journal import TrialLedger, VersionState
 from .registry import Refused
-from .split import dev_end, dev_universe, position_caps, version_symbols, window
+from .split import dev_end, dev_universe, for_version, position_caps, version_symbols, window
 from .workspace import Workspace
 
 
@@ -216,6 +216,7 @@ def feasibility(
     workers: int | None = None,
 ) -> results.StageResult:
     require_ready(ws, version, "feasibility", after="build")
+    criteria = for_version(ws, criteria, version)
     card = read_card(ws.root / version.card_path)
     universe = dev_universe(ws, criteria, card.timeframe, version_symbols(criteria, version))
     costs = costs_for_symbols(criteria, list(universe))

@@ -30,7 +30,7 @@ from algotrade.parallel import ENV
 from algotrade.research.cards import read_card
 from algotrade.research.criteria import Criteria, load_criteria
 from algotrade.research.feasibility import run_feasibility
-from algotrade.research.split import dev_universe, window
+from algotrade.research.split import FUNDING_ALIGNMENT, dev_universe, recorded_alignment, window
 from algotrade.research.workspace import Workspace
 from algotrade.validation.optimize import evaluate
 
@@ -58,9 +58,11 @@ def _criteria_files() -> list[Criteria]:
 
 
 def _universe(criteria: Criteria, record: dict, timeframe: str) -> dict | None:
-    """The development bars, or None when they no longer hash as recorded."""
+    """The development bars as the record saw them (its funding alignment, whatever
+    ``data.funding_alignment`` says now), or None when they no longer hash as recorded."""
 
     ws = Workspace(REPO, data_root=DATA)
+    criteria = criteria.with_value(FUNDING_ALIGNMENT, recorded_alignment(record))
     try:
         universe = dev_universe(ws, criteria, timeframe)
     except FileNotFoundError:

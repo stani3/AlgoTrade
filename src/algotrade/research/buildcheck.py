@@ -28,7 +28,7 @@ from .criteria import Check, Criteria, at_least, at_most
 from .dedup import core_rules, spec_hash
 from .journal import Journal, VersionState
 from .registry import IDEA_TYPE, Refused, check_builds, conflicts, strategy_types
-from .split import dev_universe, window
+from .split import dev_universe, for_version, funding_alignment, window
 from .workspace import Workspace
 
 
@@ -158,6 +158,7 @@ def code_files(ws: Workspace, version: VersionState) -> list[tuple[str, Path, Pa
 def build_check(
     ws: Workspace, criteria: Criteria, version: VersionState, commit: bool = True
 ) -> BuildOutcome:
+    criteria = for_version(ws, criteria, version)
     card_path = ws.root / version.card_path
     if card_hash(card_path) != version.card_hash:
         raise Refused(f"{version.card_path} was edited after registration; use `research revise`")
@@ -267,6 +268,7 @@ def build_check(
                 "label": f"{version.idea} v{version.version} {version.title}",
                 "symbols": symbols,
                 "exchange": criteria.get("data.exchange"),
+                "funding_alignment": funding_alignment(criteria),
             },
         )
     results.record(ws, version, result, extra_paths, commit=commit)

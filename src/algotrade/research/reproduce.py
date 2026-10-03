@@ -24,7 +24,15 @@ from .criteria import Criteria
 from .holdout import holdout_results, load_result
 from .journal import VersionState
 from .registry import Refused
-from .split import dev_end, dev_universe, position_caps, version_symbols, window
+from .split import (
+    FUNDING_ALIGNMENT,
+    dev_end,
+    dev_universe,
+    position_caps,
+    recorded_alignment,
+    version_symbols,
+    window,
+)
 from .validate import deflation, run_walk_forward
 from .workspace import Workspace
 
@@ -64,6 +72,8 @@ def _reproduce(
     ws: Workspace, criteria: Criteria, version: VersionState, stage: str, pool: Pool
 ) -> str:
     recorded = load_result(ws, version, stage)
+    # The data as the stage saw it, whatever data.funding_alignment says now.
+    criteria = criteria.with_value(FUNDING_ALIGNMENT, recorded_alignment(recorded))
     card = read_card(ws.root / version.card_path)
     title = f"{version.idea} v{version.version} {stage} (reproduced)"
     symbols = version_symbols(criteria, version)
