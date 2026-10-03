@@ -12,6 +12,49 @@ data:
   dev_end: "2025-05-01"
   # Fixed reference set for behavioural fingerprints (positions only, dev period).
   fingerprint_symbols: [BTC, ETH, SOL]
+  # Pre-registered asset classes besides crypto (exchange/symbols above). A card names its
+  # classes (universe: [crypto], [fx, commodities] or all) and every gate is computed over
+  # those symbols only; cards without one mean [crypto]. Costs are per side, in bps. Returns
+  # are in excess of cash: positions pay financing (fed funds for US-listed stocks and ETFs,
+  # the rate difference for forex), as if traded as futures. max_leverage caps the exposure of
+  # position strategies and the validation stake; crypto keeps its 1x clip.
+  universes:
+    stocks:
+      source: alpaca
+      start: "2016-01-01"
+      # Ten largest US companies by market cap on 2015-12-31
+      # (raw close x shares; JPM was 11th); frozen.
+      symbols: [AAPL, GOOGL, MSFT, BRK.B, XOM, AMZN, META, GE, JNJ, WFC]
+      costs: {fee_bps: 0.5, slippage_bps: 2.0}
+      financing: fed_funds
+      max_leverage: 2.0
+    bonds:
+      source: alpaca
+      start: "2016-01-01"
+      symbols: [TLT, IEF, SHY, TIP, LQD, HYG, AGG, EMB, MUB, BNDX]
+      costs: {fee_bps: 0.5, slippage_bps: 2.0}
+      cost_overrides: {MUB: {slippage_bps: 5.0}, BNDX: {slippage_bps: 5.0}}
+      financing: fed_funds
+      max_leverage: 10.0
+      leverage_overrides: {TIP: 2.0, LQD: 2.0, HYG: 2.0, AGG: 2.0,
+                           EMB: 2.0, MUB: 2.0, BNDX: 2.0}
+    commodities:
+      source: alpaca
+      start: "2016-01-01"
+      symbols: [GLD, SLV, USO, UNG, CPER, DBA, CORN, WEAT, PPLT, DBC]
+      costs: {fee_bps: 0.5, slippage_bps: 2.0}
+      cost_overrides: {CPER: {slippage_bps: 5.0}, CORN: {slippage_bps: 5.0},
+                       WEAT: {slippage_bps: 10.0}, PPLT: {slippage_bps: 5.0}}
+      financing: fed_funds
+      max_leverage: 10.0
+      leverage_overrides: {DBA: 2.0, DBC: 2.0}
+    fx:
+      source: dukascopy
+      start: "2016-01-01"
+      symbols: [EURUSD, USDJPY, GBPUSD, AUDUSD]
+      costs: {fee_bps: 0.3, slippage_bps: 1.0}
+      financing: rate_difference
+      max_leverage: 10.0
 
 budgets:
   ideas_per_run: 5
