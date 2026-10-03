@@ -1,0 +1,174 @@
+{
+  "idea": "i006",
+  "version": 1,
+  "stage": "feasibility",
+  "verdict": "FAIL",
+  "reasons": [
+    "entry test: share of (exit, symbol) cells profitable 0.325 (needs >= 70%)",
+    "core system: median Sharpe across symbols -0.0783 (needs >= 0.3)",
+    "core system: share of symbols with Sharpe > 0 0.5 (needs >= 60%)",
+    "limited optimisation: share of grid combinations profitable 0.222 (needs >= 70%)"
+  ],
+  "checks": [
+    {
+      "name": "entry test: share of (exit, symbol) cells profitable",
+      "value": 0.325,
+      "limit": ">= 70%",
+      "passed": false
+    },
+    {
+      "name": "core system: median Sharpe across symbols",
+      "value": -0.07830854152936252,
+      "limit": ">= 0.3",
+      "passed": false
+    },
+    {
+      "name": "core system: share of symbols with Sharpe > 0",
+      "value": 0.5,
+      "limit": ">= 60%",
+      "passed": false
+    },
+    {
+      "name": "core system: median closed trades per symbol",
+      "value": 482.5,
+      "limit": ">= 30",
+      "passed": true
+    },
+    {
+      "name": "monkey test: share of random monkeys beaten",
+      "value": 0.999,
+      "limit": ">= 90%",
+      "passed": true
+    },
+    {
+      "name": "limited optimisation: share of grid combinations profitable",
+      "value": 0.2222222222222222,
+      "limit": ">= 70%",
+      "passed": false
+    }
+  ],
+  "metrics": {
+    "median Sharpe at the chosen parameters": 0.07272834647364673,
+    "plateau score of the chosen cell": 0.07448384767778782,
+    "monkey median Sharpe (median run)": -0.5216974313343898,
+    "median CAGR at the chosen parameters": -0.025654660954005315,
+    "worst drawdown at the chosen parameters": -0.7993810614405811
+  },
+  "trials": 27,
+  "notes": [
+    "Entry test by exit (fixed size per trade, summed (Davey)):\n\n| exit | profitable | trades | win_rate | avg_trade |\n|---|---|---|---|---|\n| 5 bars | 0.2 | 6087 | 0.405 | -0.001 |\n| 10 bars | 0.2 | 4728 | 0.427 | -0.001 |\n| 20 bars | 0.4 | 3457 | 0.438 | -0.001 |\n| 2/4 ATR bracket | 0.5 | 4695 | 0.352 | -0.0 |",
+    "Long against short (chosen parameters):\n\n| index | trades | win_rate | avg_return | sum_return | median_bars |\n|---|---|---|---|---|---|\n| all | 2302.0 | 0.406 | 0.001 | 3.316 | 23.0 |\n| long | 1091.0 | 0.366 | -0.001 | -0.66 | 21.0 |\n| short | 1211.0 | 0.443 | 0.003 | 3.976 | 25.0 |",
+    "Regimes (chosen parameters):\n\n| kind | regime | share_of_time | median_sharpe | mean_net |\n|---|---|---|---|---|\n| trend | neither | 0.192 | -0.1 | 0.0 |\n| trend | ranging (ADX<=20) | 0.308 | -1.557 | -0.0 |\n| trend | trending (ADX>=25) | 0.5 | 0.791 | 0.0 |\n| trend | warm-up | 0.001 | 0.0 | 0.0 |\n| volatility | high vol | 0.333 | 0.471 | 0.0 |\n| volatility | low vol | 0.333 | -0.762 | -0.0 |\n| volatility | mid vol | 0.333 | -0.089 | 0.0 |\n| volatility | warm-up | 0.0 | 0.0 | 0.0 |",
+    "Excursions (MAE/MFE):\n\n| index | median_mae | p75_mae | median_mfe | p75_mfe | median_mae_atr | median_mfe_atr |\n|---|---|---|---|---|---|---|\n| winners | 0.01 | 0.018 | 0.057 | 0.078 | 1.066 | 6.194 |\n| losers | 0.032 | 0.046 | 0.012 | 0.024 | 3.398 | 1.313 |"
+  ],
+  "report": "reports/research/i006/v1/feasibility/report.html",
+  "provenance": {
+    "created": "2026-10-03T09:36:12Z",
+    "commit": "468d18002c9cd0eaa7261fc687a51594d13b9b9f",
+    "criteria_hash": "5f452e63b833a30c",
+    "card_hash": "21b28885975e3b40",
+    "spec_hash": "c1f411bc733e5faf",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1h",
+        "start": "2019-09-08 17:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 49471,
+        "sha": "c3da94de67cbca04"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1h",
+        "start": "2019-11-27 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 47561,
+        "sha": "94ec5dbab1bf5eeb"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1h",
+        "start": "2020-09-14 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40553,
+        "sha": "db888c1fd4b31a3f"
+      },
+      {
+        "symbol": "BNB",
+        "timeframe": "1h",
+        "start": "2020-02-10 08:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 45760,
+        "sha": "f0d652059ccf093f"
+      },
+      {
+        "symbol": "XRP",
+        "timeframe": "1h",
+        "start": "2020-01-06 08:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 46600,
+        "sha": "64e001b4c26f7255"
+      },
+      {
+        "symbol": "DOGE",
+        "timeframe": "1h",
+        "start": "2020-07-10 09:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 42135,
+        "sha": "dd1e1fb9403a14ad"
+      },
+      {
+        "symbol": "ADA",
+        "timeframe": "1h",
+        "start": "2020-01-31 08:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 46000,
+        "sha": "55cebedd673ee306"
+      },
+      {
+        "symbol": "AVAX",
+        "timeframe": "1h",
+        "start": "2020-09-23 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40337,
+        "sha": "427415d5ef393917"
+      },
+      {
+        "symbol": "LINK",
+        "timeframe": "1h",
+        "start": "2020-01-17 08:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 46336,
+        "sha": "09af4697c6f45c48"
+      },
+      {
+        "symbol": "LTC",
+        "timeframe": "1h",
+        "start": "2020-01-09 08:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 46528,
+        "sha": "e6faed7bce4eb443"
+      }
+    ]
+  },
+  "chosen": {
+    "squeeze_bars": 250,
+    "stop_atr": 3.0,
+    "target_atr": 6.0
+  },
+  "chosen_spec": {
+    "type": "i006_squeeze_breakout",
+    "length": 20,
+    "mult": 2.0,
+    "squeeze_bars": 250,
+    "armed_bars": 20,
+    "atr_length": 14,
+    "stop_atr": 3.0,
+    "target_atr": 6.0,
+    "max_bars": 48,
+    "cooldown_win": 0,
+    "cooldown_loss": 0,
+    "kill_drawdown": 1.0,
+    "allow_short": true
+  }
+}
