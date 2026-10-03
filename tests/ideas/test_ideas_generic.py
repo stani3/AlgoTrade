@@ -40,7 +40,12 @@ def test_idea_spec_round_trip(cls) -> None:
 def test_bracket_ideas_have_no_lookahead(cls, bars) -> None:
     strategy = cls()
     costs = EXCHANGE_COSTS["binanceusdm"]
-    full = strategy.simulate(bars, costs).ledger
-    for cut in (120, 260, 410):
+    result = strategy.simulate(bars, costs)
+    full = result.ledger
+    # Without trades on the fixture the cuts below would compare flat ledgers and test nothing.
+    assert len(result.trades) > 0
+    # Fixed cuts, plus cuts ending on each signal bar and on each entry bar.
+    entries = bars.index.get_indexer(pd.DatetimeIndex(result.trades["entry"]))
+    for cut in sorted({120, 260, 410, *entries.tolist(), *(entries + 1).tolist()}):
         partial = strategy.simulate(bars.iloc[:cut], costs).ledger
         pd.testing.assert_frame_equal(partial, full.iloc[:cut])
