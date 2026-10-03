@@ -22,6 +22,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from algotrade.config import data_root_override
 from algotrade.research.criteria import load_criteria
 from algotrade.research.incubation import frozen_strategy, incubation_dir
 from algotrade.research.registry import Refused, find_version
@@ -87,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--parity", action="store_true", help="Check the adapter on real bars")
     args = parser.parse_args(argv)
 
-    ws = Workspace(args.root.resolve())
+    ws = Workspace(args.root.resolve(), data_root=data_root_override())
     try:
         version = find_version(ws, args.idea, args.version)
         frozen = frozen_strategy(ws, version)

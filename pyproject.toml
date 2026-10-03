@@ -41,6 +41,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: needs downloaded market data and minutes of compute (run with -m slow)"]
+addopts = "-m 'not slow'"
 
 [tool.ruff]
 line-length = 100

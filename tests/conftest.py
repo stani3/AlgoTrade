@@ -2,6 +2,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from algotrade.config import DATA_ROOT_ENV
+
+
+@pytest.fixture(autouse=True)
+def _no_data_root_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests build their own data folders; a shell's ALGOTRADE_DATA_ROOT must not leak in."""
+
+    monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
+
 
 def make_bars(n: int = 500, freq: str = "4h", seed: int = 7) -> pd.DataFrame:
     rng = np.random.default_rng(seed)

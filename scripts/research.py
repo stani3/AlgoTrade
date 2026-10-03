@@ -26,6 +26,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from algotrade.config import data_root_override
 from algotrade.research.buildcheck import build_check
 from algotrade.research.cards import CardError, read_card
 from algotrade.research.criteria import load_criteria
@@ -283,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
     args = parser().parse_args(argv)
-    ws = Workspace(root=args.root.resolve())
+    ws = Workspace(root=args.root.resolve(), data_root=data_root_override())
     try:
         return args.run(ws, args)
     except PROBLEMS as error:

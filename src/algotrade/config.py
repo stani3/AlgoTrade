@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,17 @@ DEFAULT_SETTINGS = Settings(
     data_paths=DataPaths(raw=Path("data/raw"), processed=Path("data/processed"))
 )
 
+# Market data is not committed, so a second checkout (a git worktree) has none of its own; this
+# points it at another checkout's data/raw instead.
+DATA_ROOT_ENV = "ALGOTRADE_DATA_ROOT"
+
+
+def data_root_override() -> Path | None:
+    """The raw-data folder named by ``ALGOTRADE_DATA_ROOT``, if that is set."""
+
+    value = os.environ.get(DATA_ROOT_ENV, "").strip()
+    return Path(value) if value else None
+
 
 def _coerce_path(value: str | Path) -> Path:
     path = Path(value)
@@ -39,7 +51,12 @@ def load_settings(config_path: Path | str | None = None) -> Settings:
     """Load settings from YAML if provided, else fall back to sane defaults."""
 
     if config_path is None:
-        return DEFAULT_SETTINGS
+        override = data_root_override()
+        if override is None:
+            return DEFAULT_SETTINGS
+        return replace(
+            DEFAULT_SETTINGS, data_paths=replace(DEFAULT_SETTINGS.data_paths, raw=override)
+        )
 
     path = Path(config_path)
     if not path.exists():
