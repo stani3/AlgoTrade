@@ -1,0 +1,20 @@
+{
+  "key": "9af758e17a1a659b_1h",
+  "spec": {
+    "type": "i007_dual_thrust",
+    "k": 0.5,
+    "range_days": 1
+  },
+  "spec_hash": "9af758e17a1a659b",
+  "timeframe": "1h",
+  "source": "idea",
+  "idea": "i007",
+  "version": 1,
+  "label": "i007 v1 Dual Thrust intraday breakout",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

@@ -1,0 +1,197 @@
+{
+  "idea": "i007",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i007_dual_thrust)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i007_dual_thrust)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i007_dual_thrust)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened parabolic_sar (4h, vol target 25%): correlation 0.27, exposure difference 0.66"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-03T09:56:37Z",
+    "commit": "5ddc4ce3d812b3be72d1aad78c51c5ab5e26b0aa",
+    "criteria_hash": "5f452e63b833a30c",
+    "card_hash": "6da0c641ecf59899",
+    "spec_hash": "9af758e17a1a659b",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1h",
+        "start": "2019-09-08 17:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 49471,
+        "sha": "c3da94de67cbca04"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1h",
+        "start": "2019-11-27 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 47561,
+        "sha": "94ec5dbab1bf5eeb"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1h",
+        "start": "2020-09-14 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40553,
+        "sha": "db888c1fd4b31a3f"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "4815c3a48d64c0d0_4h",
+      "label": "screened parabolic_sar (4h, vol target 25%)",
+      "correlation": 0.27172205835526547,
+      "difference": 0.6590242081289162,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "parabolic_sar",
+          "step": 0.02,
+          "max_step": 0.2,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "ea007de0064987f1_4h",
+      "label": "screened macd (4h, vol target 25%)",
+      "correlation": 0.25759415530995394,
+      "difference": 0.6562134701807625,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "macd",
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "mode": "signal",
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "171533323f4cb43b_4h",
+      "label": "screened bollinger_breakout (4h, vol target 25%)",
+      "correlation": 0.24055261928275318,
+      "difference": 0.7102317256315626,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "d12e35646d4e805c_1h",
+      "label": "i006 v1 Bollinger squeeze breakout",
+      "correlation": 0.2209803605509765,
+      "difference": 0.751920436778533,
+      "days": 2062,
+      "duplicate": false,
+      "source": "idea",
+      "spec": {
+        "type": "i006_squeeze_breakout",
+        "length": 20,
+        "mult": 2.0,
+        "squeeze_bars": 125,
+        "armed_bars": 20,
+        "atr_length": 14,
+        "stop_atr": 2.0,
+        "target_atr": 4.0,
+        "max_bars": 48,
+        "cooldown_win": 0,
+        "cooldown_loss": 0,
+        "kill_drawdown": 1.0,
+        "allow_short": true
+      }
+    },
+    {
+      "key": "ce1e118071d1ce3c_4h",
+      "label": "screened momentum (4h, vol target 25%)",
+      "correlation": 0.2146292551172368,
+      "difference": 0.6625015242563322,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "momentum",
+          "lookback": 20,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i007_dual_thrust.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 26%]\n........................................................................ [ 53%]\n........................................................................ [ 80%]\n.....................................................                    [100%]\n269 passed in 32.53s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i007_dual_thrust.py"
+  ]
+}
