@@ -122,6 +122,22 @@ class Financing:
         return rates.update_fx_rollovers(root, symbol, currencies)
 
 
+def class_instruments(
+    asset_class: str, criteria_path: Path = Path("research/criteria.yaml")
+) -> tuple[str, str]:
+    """Source and comma-separated symbols of an asset class: as research/criteria.yaml lists
+    them, or the defaults above when the file has no such class."""
+
+    from algotrade.instruments import universes
+    from algotrade.research.criteria import load_criteria
+
+    if criteria_path.exists():
+        spec = universes(load_criteria(criteria_path)).get(asset_class)
+        if spec:
+            return spec["source"], ",".join(spec["symbols"])
+    return ASSET_CLASSES[asset_class]
+
+
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -147,7 +163,7 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--env-file", type=Path, default=Path(".env"), help="API keys")
     args = parser.parse_args(argv)
     if args.asset_class:
-        source, symbols = ASSET_CLASSES[args.asset_class]
+        source, symbols = class_instruments(args.asset_class)
         if args.source and args.source != source:
             parser.error(f"{args.asset_class} comes from {source}, not {args.source}")
         args.source, args.symbols = source, args.symbols or symbols

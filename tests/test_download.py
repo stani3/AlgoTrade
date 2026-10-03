@@ -305,3 +305,18 @@ def test_financing_fetches_each_rate_once(tmp_path, monkeypatch) -> None:
     assert financing.update(tmp_path, "dukascopy", "EURUSD") == 2
     assert financing.update(tmp_path, "dukascopy", "USDJPY") == 2
     assert fetched == ["DFF", "ECBDFR", "IRSTCI01JPM156N"]
+
+
+def test_asset_classes_follow_criteria(tmp_path) -> None:
+    import shutil
+
+    shutil.copy(download_data.Path("research/criteria.yaml"), tmp_path / "criteria.yaml")
+    assert download_data.class_instruments("fx", tmp_path / "criteria.yaml") == (
+        "dukascopy", "EURUSD,USDJPY,GBPUSD,AUDUSD"
+    )  # fmt: skip
+    stripped = tmp_path / "plain.yaml"
+    stripped.write_text("data:\n  exchange: binanceusdm\n  symbols: [BTC]\n", encoding="utf-8")
+    assert (
+        download_data.class_instruments("bonds", stripped) == download_data.ASSET_CLASSES["bonds"]
+    )
+    assert download_data.class_instruments("fx", tmp_path / "none.yaml")[0] == "dukascopy"
