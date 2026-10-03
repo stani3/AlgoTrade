@@ -132,3 +132,25 @@ def _load(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.
     if instrument is None:
         return load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
     return load_instrument(ws.raw_data, instrument, timeframe)
+
+
+def version_symbols(criteria: Criteria, version: VersionState) -> list[str]:
+    """The symbols an idea version is tested on: those journaled when its card was registered,
+    or (cards from before universes) the crypto symbols in criteria."""
+
+    if version.symbols:
+        return list(version.symbols)
+    return symbols_for(criteria, version.universe)
+
+
+def position_caps(criteria: Criteria, symbols: list[str], spec: dict) -> dict[str, float] | float:
+    """How far a position strategy's exposure may go on each symbol: the instrument's
+    ``max_leverage`` (crypto 1). Bracket strategies always trade size 1 here: their sizing is
+    the stake that validation chooses."""
+
+    from algotrade.strategies import BracketStrategy, from_spec
+
+    if isinstance(from_spec(spec), BracketStrategy):
+        return 1.0
+    found = registry(criteria)
+    return {s: found[s].max_leverage if s in found else 1.0 for s in symbols}

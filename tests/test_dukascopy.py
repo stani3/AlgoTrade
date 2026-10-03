@@ -142,3 +142,28 @@ def test_update_fx_with_nothing_to_fetch(tmp_path) -> None:
     client = DukascopyClient(FakeSession(datafeed()), pause=0.0)
     assert update_fx(tmp_path, "EURUSD", ["1h"], client, now=pd.Timestamp("2016-01-20")) == {}
     assert dukascopy.POINT["USDJPY"] == 1e3
+
+
+def test_a_failed_download_keeps_whole_years_and_resumes(tmp_path) -> None:
+    calls = {"n": 0}
+    good = datafeed()
+
+    def flaky(url, params):
+        calls["n"] += 1
+        return FakeResponse(500) if calls["n"] > 2 * 14 else good(url, params)  # month 15 fails
+
+    now = pd.Timestamp("2018-01-10", tz="UTC")
+    with pytest.raises(DukascopyError, match="HTTP 500"):
+        update_fx(tmp_path, "EURUSD", ["1d"], DukascopyClient(FakeSession(flaky), pause=0.0),
+                  start="2016-01-01", now=now)  # fmt: skip
+    saved = read_bars(bars_path(tmp_path, "dukascopy", "EURUSD", "1h"))
+    assert (
+        saved.index[-1]
+        < pd.Timestamp("2017-01-01", tz="UTC")
+        <= saved.index[-1] + pd.Timedelta(days=3)
+    )
+    counts = update_fx(tmp_path, "EURUSD", ["1d"], DukascopyClient(FakeSession(good), pause=0.0),
+                       now=now)  # fmt: skip
+    resumed = read_bars(bars_path(tmp_path, "dukascopy", "EURUSD", "1h"))
+    pd.testing.assert_frame_equal(resumed.loc[saved.index], saved)
+    assert counts["1h"] == len(resumed) and resumed.index[-1] > pd.Timestamp("2017-12-28", tz="UTC")

@@ -78,6 +78,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         version = find_version(ws, args.idea, args.version)
         frozen = frozen_strategy(ws, version)
+        if frozen.get("universe", ["crypto"]) != ["crypto"]:
+            raise Refused(
+                f"{version.idea} trades {', '.join(frozen['universe'])}; the testnets are crypto"
+            )
     except Refused as error:
         print(f"REFUSED: {error}")
         return 1

@@ -24,7 +24,7 @@ from .criteria import Criteria
 from .holdout import holdout_results, load_result
 from .journal import VersionState
 from .registry import Refused
-from .split import dev_end, dev_universe, window
+from .split import dev_end, dev_universe, position_caps, version_symbols, window
 from .validate import deflation, run_walk_forward
 from .workspace import Workspace
 
@@ -66,15 +66,17 @@ def _reproduce(
     recorded = load_result(ws, version, stage)
     card = read_card(ws.root / version.card_path)
     title = f"{version.idea} v{version.version} {stage} (reproduced)"
+    symbols = version_symbols(criteria, version)
     if stage == "feasibility":
-        universe = dev_universe(ws, criteria, card.timeframe)
+        universe = dev_universe(ws, criteria, card.timeframe, symbols)
         _check_data(
             recorded["provenance"]["data"],
             [window(b, s, card.timeframe) for s, b in universe.items()],
         )
         found, per_symbol = evaluate(
-            recorded["chosen_spec"], universe, costs_for_symbols(criteria, list(universe))
-        )
+            recorded["chosen_spec"], universe, costs_for_symbols(criteria, list(universe)),
+            position_caps(criteria, list(universe), recorded["chosen_spec"]),
+        )  # fmt: skip
         _check_metric(
             recorded["metrics"][HEADLINE[stage]],
             float(per_symbol["sharpe"].median()),
@@ -83,12 +85,12 @@ def _reproduce(
         pairs = {s: (universe[s], r) for s, r in found.items()}
         settings = {"Strategy spec": json.dumps(recorded["chosen_spec"])}
     elif stage == "validation":
-        universe = dev_universe(ws, criteria, card.timeframe)
+        universe = dev_universe(ws, criteria, card.timeframe, symbols)
         _check_data(
             recorded["provenance"]["data"],
             [window(b, s, card.timeframe) for s, b in universe.items()],
         )
-        wf, _ = run_walk_forward(ws, criteria, card, pool)
+        wf, _ = run_walk_forward(ws, criteria, card, pool, symbols)
         _check_metric(
             recorded["metrics"][HEADLINE[stage]],
             deflation(ws, wf.results)["annualised_sharpe"],
@@ -97,7 +99,7 @@ def _reproduce(
         pairs = {s: (universe[s], r) for s, r in wf.results.items()}
         settings = {"Base spec": json.dumps(card.spec), "Walk-forward": "as recorded"}
     elif stage == "holdout":
-        found = holdout_results(ws, criteria, recorded["spec"], card.timeframe)
+        found = holdout_results(ws, criteria, recorded["spec"], card.timeframe, symbols)
         start = dev_end(criteria)
         _check_data(
             recorded["provenance"]["data"],

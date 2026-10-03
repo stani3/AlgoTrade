@@ -227,13 +227,21 @@ def test_asset_classes_choose_source_and_symbols() -> None:
 
 
 def test_session_markets_download_check_and_report_failures(tmp_path, monkeypatch, capsys) -> None:
-    from algotrade.data import alpaca, dukascopy
+    from algotrade.data import alpaca, dukascopy, rates
     from algotrade.data.files import bars_path, write_bars
 
     settings = type("S", (), {"data_paths": type("P", (), {"raw": tmp_path})()})()
     monkeypatch.setattr(download_data, "load_settings", lambda: settings)
     monkeypatch.setattr(alpaca, "AlpacaClient", lambda: "client")
     monkeypatch.setattr(dukascopy, "DukascopyClient", lambda: "client")
+
+    class FakeFinancing:
+        def update(self, root, source, symbol):
+            if symbol == "IEF":
+                raise rates.RatesError("HTTP 500 for FRED series DFF")
+            return 5
+
+    monkeypatch.setattr(download_data, "Financing", FakeFinancing)
     index = pd.date_range("2024-01-01", periods=40, freq="4h", tz="UTC")
     bars = pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0},
                         index=index)  # fmt: skip
@@ -250,6 +258,8 @@ def test_session_markets_download_check_and_report_failures(tmp_path, monkeypatc
     out = capsys.readouterr().out
     assert failed == 1
     assert "TLT: 4h=40" in out and "IEF: up to date" in out
+    assert "financing: 5 charges" in out
+    assert "financing: FAILED (RatesError: HTTP 500 for FRED series DFF)" in out
     assert "BAD: FAILED (AlpacaError: HTTP 404 for BAD)" in out
     assert "check 4h jump: close-to-close moves above 25%" in out
 
@@ -278,3 +288,20 @@ def test_session_markets_from_the_command_line(tmp_path, monkeypatch) -> None:
     assert download_data.run(["--symbols", "btc", "--timeframes", "1d"]) == 0
     assert crypto == [{"exchange_id": "binanceusdm", "symbols": ["BTC"], "timeframes": ["1d"],
                        "quote": "USDT"}]  # fmt: skip
+
+
+def test_financing_fetches_each_rate_once(tmp_path, monkeypatch) -> None:
+    from algotrade.data import rates
+
+    fetched = []
+    monkeypatch.setattr(
+        rates, "fetch_series", lambda series, session: fetched.append(series) or 0.0
+    )
+    monkeypatch.setattr(rates, "update_us_financing", lambda root, symbol, rate: 3)
+    monkeypatch.setattr(rates, "update_fx_rollovers", lambda root, pair, found: len(found))
+    financing = download_data.Financing()
+    assert financing.update(tmp_path, "alpaca", "TLT") == 3
+    assert financing.update(tmp_path, "alpaca", "IEF") == 3
+    assert financing.update(tmp_path, "dukascopy", "EURUSD") == 2
+    assert financing.update(tmp_path, "dukascopy", "USDJPY") == 2
+    assert fetched == ["DFF", "ECBDFR", "IRSTCI01JPM156N"]

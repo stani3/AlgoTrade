@@ -111,3 +111,32 @@ def test_costs_text() -> None:
     assert costs_text(mixed) == (
         "5+3 bps per side: BTC, ETH; 0.5+2 bps per side: TLT, IEF (funding or financing on)"
     )
+
+
+def test_leverage_caps_reach_position_strategies_only(multi) -> None:
+    from algotrade.research.split import position_caps
+    from algotrade.research.validate import stake_cap
+    from algotrade.validation.optimize import evaluate
+
+    ws, criteria = multi
+    universe = dev_universe(ws, criteria, "1d", ["BTC", "TLT", "EURUSD"])
+    calm = {"type": "vol_target", "annual_vol": 0.5, "max_leverage": 50.0,
+            "strategy": {"type": "ma_crossover", "fast": 10, "slow": 40}}  # fmt: skip
+    caps = position_caps(criteria, list(universe), calm)
+    assert caps == {"BTC": 1.0, "TLT": 10.0, "EURUSD": 10.0}
+    bracket = {"type": "breakout_bracket", "lookback": 24}
+    assert position_caps(criteria, list(universe), bracket) == 1.0
+    capped, _ = evaluate(calm, universe, costs_for(criteria), caps)
+    plain, _ = evaluate(calm, universe, costs_for(criteria))
+    peaks = {s: float(r.ledger["position"].abs().max()) for s, r in capped.items()}
+    assert peaks["BTC"] <= 1.0 and 1.0 < peaks["TLT"] <= 10.0
+    assert all(float(r.ledger["position"].abs().max()) <= 1.0 for r in plain.values())
+    pd.testing.assert_frame_equal(capped["BTC"].ledger, plain["BTC"].ledger)
+    assert stake_cap(criteria, capped) == pytest.approx(10.0 / max(peaks["TLT"], peaks["EURUSD"]))
+    assert stake_cap(criteria, {"BTC": capped["BTC"]}) is None
+
+
+def costs_for(criteria):
+    from algotrade.instruments import costs_for_symbols
+
+    return costs_for_symbols(criteria, ["BTC", "TLT", "EURUSD"])

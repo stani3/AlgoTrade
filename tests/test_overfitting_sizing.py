@@ -81,6 +81,16 @@ def test_stake_never_goes_past_the_peak_median_return() -> None:
     assert sizing.stake == peak
 
 
+def test_stake_stays_within_the_instruments_leverage() -> None:
+    rng = np.random.default_rng(1)
+    returns = rng.normal(0.01, 0.04, 400)
+    sizes = [0.25, 0.5, 1.0, 1.5, 2.0]
+    free = choose_stake(returns, 40, sizes, 800, 0.5, LIMITS)
+    capped = choose_stake(returns, 40, sizes, 800, 0.5, LIMITS, max_stake=1.6)
+    allowed = [size for size in sizes if size <= 1.6 and capped.passing(size)]
+    assert free.stake == 2.0 and capped.stake == max(allowed) < free.stake
+
+
 def test_no_stake_when_nothing_passes() -> None:
     losers = np.array([-0.05, -0.04, 0.01, -0.03] * 10)
     sizing = choose_stake(losers, 30, [0.5, 1.0], 300, 0.5, LIMITS)

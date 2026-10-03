@@ -17,8 +17,10 @@ import json
 import numpy as np
 import pandas as pd
 
+from algotrade.backtest.costs import cap_for
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.calendars import infer_calendar
 from algotrade.instruments import CRYPTO, costs_for_symbols, describe, symbols_for
 from algotrade.parallel import Pool
 from algotrade.validation.bands import block_bootstrap
@@ -30,7 +32,7 @@ from .dedup import spec_hash
 from .feasibility import require_ready
 from .journal import Journal, VersionState
 from .registry import Refused
-from .split import dev_end, load_full_bars, open_holdout, window
+from .split import dev_end, load_full_bars, open_holdout, position_caps, version_symbols, window
 from .workspace import Workspace
 
 BOOTSTRAP_BLOCK_DAYS = 10
@@ -39,6 +41,15 @@ BOOTSTRAP_BLOCK_DAYS = 10
 def _bars_per_day(found: dict) -> float:
     rates = [periods_per_year(result.ledger.index) / 365.25 for _, result in found.values()]
     return float(np.median(rates)) if rates else 1.0
+
+
+def calendar_groups(found: dict) -> dict[str, list[str]]:
+    """Symbols by trading calendar (one group unless the symbols trade on different ones)."""
+
+    groups: dict[str, list[str]] = {}
+    for symbol, (_, result) in found.items():
+        groups.setdefault(infer_calendar(result.ledger.index), []).append(symbol)
+    return groups or {"24/7": []}
 
 
 def load_result(ws: Workspace, version: VersionState, stage: str) -> dict:
@@ -59,12 +70,14 @@ def holdout_results(
 
     symbols = symbols or symbols_for(criteria, (CRYPTO,))
     costs = costs_for_symbols(criteria, symbols)
+    caps = position_caps(criteria, symbols, spec)
     start = dev_end(criteria)
     out = {}
     for symbol in symbols:
         bars = load_full_bars(ws, criteria, symbol, timeframe)
         if (bars.index >= start).sum() > 1:
-            out[symbol] = (bars, out_of_sample(spec, bars, start, costs[symbol]))
+            trade = out_of_sample(spec, bars, start, costs[symbol], cap_for(caps, symbol))
+            out[symbol] = (bars, trade)
     return out
 
 
@@ -86,7 +99,7 @@ def holdout(
     spec = feasibility["chosen_spec"]
     open_holdout(Journal(ws.journal_path), version, force=force, reason=reason)
     card_timeframe = version.timeframe
-    found = holdout_results(ws, criteria, spec, card_timeframe)
+    found = holdout_results(ws, criteria, spec, card_timeframe, version_symbols(criteria, version))
     costs = costs_for_symbols(criteria, list(found))
 
     sharpes, drawdowns, trades = [], [], []
@@ -101,25 +114,35 @@ def holdout(
               criteria.get("holdout.min_sharpe")),
     ]  # fmt: skip
 
-    # What a run this long should look like: block bootstrap of the out-of-sample bar returns.
+    # What a run this long should look like: block bootstrap of the out-of-sample bar returns,
+    # per trading calendar when the symbols do not share one (bars per day differ).
     failures = []
     band = None
-    lengths = [len(result.ledger) for _, result in found.values()]
-    series = [oos[column].dropna().to_numpy() for column in oos.columns]
-    block = max(round(BOOTSTRAP_BLOCK_DAYS * _bars_per_day(found)), 1)
-    try:
-        bands = block_bootstrap(
-            series, int(np.median(lengths)) if lengths else 0,
-            criteria.get("validation.monte_carlo_runs"), block, seed,
-        )  # fmt: skip
-        band = bands.drawdown(criteria.get("holdout.max_drawdown_percentile"))
-        checks.append(
-            at_most(
-                "holdout median max drawdown within the bootstrap band", median_dd, band, "{:.0%}"
+    groups = calendar_groups(found)
+    for calendar, members in groups.items():
+        part = {s: found[s] for s in members}
+        lengths = [len(result.ledger) for _, result in part.values()]
+        columns = [c for c in oos.columns if c in members] if len(groups) > 1 else oos.columns
+        series = [oos[column].dropna().to_numpy() for column in columns]
+        block = max(round(BOOTSTRAP_BLOCK_DAYS * _bars_per_day(part)), 1)
+        name = "holdout median max drawdown within the bootstrap band"
+        if len(groups) > 1:
+            name += f" ({calendar})"
+        group_dd = float(np.median([drawdowns[list(found).index(s)] for s in members]))
+        try:
+            bands = block_bootstrap(
+                series, int(np.median(lengths)) if lengths else 0,
+                criteria.get("validation.monte_carlo_runs"), block, seed,
+            )  # fmt: skip
+            group_band = bands.drawdown(criteria.get("holdout.max_drawdown_percentile"))
+            band = group_band if band is None else max(band, group_band)
+            checks.append(at_most(name, group_dd if len(groups) > 1 else median_dd, group_band,
+                                  "{:.0%}"))  # fmt: skip
+        except ValueError:
+            failures.append(
+                "not enough out-of-sample data or holdout bars to build the drawdown band"
+                + (f" ({calendar})" if len(groups) > 1 else "")
             )
-        )
-    except ValueError:
-        failures.append("not enough out-of-sample data or holdout bars to build the drawdown band")
 
     folder = ws.stage_dir(version.idea, version.slug, version.version, "holdout")
     folder.mkdir(parents=True, exist_ok=True)

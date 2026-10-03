@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import CostModel, costs_for
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.metrics import periods_per_year
 from algotrade.parallel import Pool, run
 from algotrade.strategies import BracketStrategy, Strategy
@@ -82,6 +82,7 @@ def monkey_symbol(
     runs: int,
     draws: MonkeyDraws,
     signals=None,
+    max_leverage: float = 1.0,
 ) -> tuple[float, np.ndarray]:
     """The strategy's Sharpe ratio on one symbol and that of each of its ``runs`` monkeys.
 
@@ -109,10 +110,10 @@ def monkey_symbol(
             monkeys[run_] = sharpe(returns, ppy)
     else:
         exposure = strategy.target_position(bars).to_numpy(dtype="float64")
-        real = sharpe(position_returns(bars, exposure, costs), ppy)
+        real = sharpe(position_returns(bars, exposure, costs, max_leverage), ppy)
         for run_, offset in enumerate(draws.offsets):
             shifted = np.roll(exposure, int(offset))
-            monkeys[run_] = sharpe(position_returns(bars, shifted, costs), ppy)
+            monkeys[run_] = sharpe(position_returns(bars, shifted, costs, max_leverage), ppy)
     return real, monkeys
 
 
@@ -135,11 +136,12 @@ def monkey_test(
     runs: int,
     seed: int = 0,
     pool: Pool | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> MonkeyTest:
     bracket = isinstance(strategy, BracketStrategy)
     draws = plan_draws(bracket, [len(bars) for bars in universe.values()], runs, seed)
     jobs = [
-        (strategy, bars, costs_for(costs, symbol), runs, plan)
+        (strategy, bars, costs_for(costs, symbol), runs, plan, None, cap_for(max_leverage, symbol))
         for (symbol, bars), plan in zip(universe.items(), draws, strict=True)
     ]
     return combine(run(_monkey_job, jobs, pool), runs)

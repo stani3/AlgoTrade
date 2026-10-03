@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import CostModel, costs_for
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.engine import BacktestResult, run_backtest
 from algotrade.backtest.metrics import summarize
 from algotrade.backtest.report import PerformanceReport, build_report
@@ -87,7 +87,9 @@ def run_symbol(task: SymbolTask) -> SymbolOutcome:
         core = grid[same[0]][0]
     else:
         core = summarize(backtest(strategy, task.bars, task.costs, task.max_leverage))
-    monkey = monkey_symbol(strategy, task.bars, task.costs, task.monkey_runs, task.draws, signals)
+    monkey = monkey_symbol(
+        strategy, task.bars, task.costs, task.monkey_runs, task.draws, signals, task.max_leverage
+    )
     return SymbolOutcome(entry_rows=rows, core=core, monkey=monkey, grid=grid)
 
 
@@ -138,17 +140,20 @@ def run_limited(
     monkey_runs: int,
     seed: int = 0,
     pool: Pool | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> LimitedTest:
-    """Entry test, core system, monkey test and grid over the universe."""
+    """Entry test, core system, monkey test and grid over the universe; ``max_leverage`` caps
+    each symbol's exposure (bracket strategies: their position size)."""
 
     check_scoring(entry.scoring)
     bracket = isinstance(from_spec(spec), BracketStrategy)
     draws = plan_draws(bracket, [len(bars) for bars in universe.values()], monkey_runs, seed)
     specs = grid_specs(spec, grid)
     tasks = [
-        SymbolTask(symbol, bars, costs_for(costs, symbol), spec, specs, entry, monkey_runs, plan)
+        SymbolTask(symbol, bars, costs_for(costs, symbol), spec, specs, entry, monkey_runs, plan,
+                   cap_for(max_leverage, symbol))
         for (symbol, bars), plan in zip(universe.items(), draws, strict=True)
-    ]
+    ]  # fmt: skip
     outcomes = dict(zip(universe, run(run_symbol, tasks, pool), strict=True))
     return LimitedTest(
         entry=EntryTest(pd.DataFrame([row for o in outcomes.values() for row in o.entry_rows])),
@@ -165,13 +170,15 @@ def run_chosen(
     report: bool = True,
     seed: int = 0,
     pool: Pool | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> ChosenRun:
     """The chosen parameters on every symbol, with the performance reports if ``report``."""
 
     tasks = [
-        ChosenTask(symbol, bars, costs_for(costs, symbol), spec, report, seed, f"s{n}", n == 0)
+        ChosenTask(symbol, bars, costs_for(costs, symbol), spec, report, seed, f"s{n}", n == 0,
+                   cap_for(max_leverage, symbol))
         for n, (symbol, bars) in enumerate(universe.items())
-    ]
+    ]  # fmt: skip
     found = run(chosen_symbol, tasks, pool)
     results = {symbol: result for symbol, (result, _, _) in zip(universe, found, strict=True)}
     return ChosenRun(

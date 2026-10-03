@@ -33,6 +33,7 @@ RECORD = np.dtype(
      ("volume", ">f4")]
 )  # fmt: skip
 PRICES = ["open", "high", "low", "close"]
+SAVE_EVERY = 12  # months
 
 
 class DukascopyError(RuntimeError):
@@ -83,7 +84,7 @@ class DukascopyClient:
         connect_timeout: float = 5.0,
         read_timeout: float = 60.0,
         pause: float = 0.5,
-        max_retries: int = 6,
+        max_retries: int = 8,
         sleep=time.sleep,
     ) -> None:
         if session is None:
@@ -159,26 +160,33 @@ def update_fx(
     """Download or extend a pair's hourly history, then rebuild its bar files.
 
     The hourly trading-week bars are the stored base (``<PAIR>_1h.parquet``); 4h and daily bars
-    are rebuilt from them. Returns the row count of each file written.
+    are rebuilt from them. Progress is saved every ``SAVE_EVERY`` months, so a download that
+    stops (the datafeed rate-limits hard) resumes where it stopped. Returns the row count of
+    each file written.
     """
 
     client = client or DukascopyClient()
     now = pd.Timestamp.now("UTC") if now is None else pd.Timestamp(now)
     path = bars_path(root, SOURCE, pair, "1h")
-    stored = read_bars(path)
-    if stored is None:
+    hourly = read_bars(path)
+    if hourly is None:
         first = pd.Timestamp(start)
     else:
-        last = stored.index[-1].tz_convert("UTC")
+        last = hourly.index[-1].tz_convert("UTC")
         first = pd.Timestamp(last.year, last.month, 1) + pd.offsets.MonthBegin(1)
     months = complete_months(first, now.tz_localize(None) if now.tzinfo else now)
-    fresh = [fx_trading_hours(client.month(pair, month)) for month in months]
-    parts = ([stored] if stored is not None else []) + [f for f in fresh if len(f)]
-    if not parts:
+    for begin in range(0, len(months), SAVE_EVERY):
+        fresh = [
+            fx_trading_hours(client.month(pair, m)) for m in months[begin : begin + SAVE_EVERY]
+        ]
+        parts = ([hourly] if hourly is not None else []) + [f for f in fresh if len(f)]
+        if parts:
+            hourly = pd.concat(parts)
+            hourly = hourly[~hourly.index.duplicated(keep="first")].sort_index()
+            write_bars(hourly, path)
+    if hourly is None:
         return {}
-    hourly = pd.concat(parts)
-    hourly = hourly[~hourly.index.duplicated(keep="first")].sort_index()
-    counts = {"1h": write_bars(hourly, path)}
+    counts = {"1h": len(hourly)}
     for timeframe in timeframes:
         if timeframe != "1h":
             bars = resample_fx(hourly, timeframe)

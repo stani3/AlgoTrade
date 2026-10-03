@@ -36,7 +36,7 @@ from algotrade.research.holdout import holdout
 from algotrade.research.incubation import incubation_report
 from algotrade.research.incubation import start as start_incubation
 from algotrade.research.index import write_index
-from algotrade.research.journal import Journal, TrialLedger
+from algotrade.research.journal import Journal, LedgerFormatError, TrialLedger, migrate_trials
 from algotrade.research.registry import Refused, abandon, find_version, register, revise
 from algotrade.research.reproduce import reproduce
 from algotrade.research.seed import seed
@@ -45,7 +45,7 @@ from algotrade.research.validate import validate
 from algotrade.research.vcs import GitError
 from algotrade.research.workspace import Workspace
 
-PROBLEMS = (Refused, CardError, HoldoutViolation, GitError, FileNotFoundError)
+PROBLEMS = (Refused, CardError, HoldoutViolation, GitError, FileNotFoundError, LedgerFormatError)
 
 
 def cmd_seed(ws: Workspace, args: argparse.Namespace) -> int:
@@ -199,6 +199,21 @@ def cmd_incubation_report(ws: Workspace, args: argparse.Namespace) -> int:
     return 1 if outcome.status == "fail" else 0
 
 
+def cmd_migrate_trials(ws: Workspace, args: argparse.Namespace) -> int:
+    """USER ONLY, once: add the universe column to a trial ledger from before universes."""
+
+    rows = migrate_trials(ws.trials_path)
+    Journal(ws.journal_path).append("trials_migrated", rows=rows, column="universe")
+    print(f"Added the universe column (crypto) to {rows} trials in {ws.relative(ws.trials_path)}")
+    if not args.no_commit:
+        from algotrade.research import vcs
+
+        vcs.commit(
+            ws.root, [ws.trials_path, ws.journal_path], "research: trials gain a universe column"
+        )
+    return 0
+
+
 def cmd_report(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
@@ -287,6 +302,10 @@ def parser() -> argparse.ArgumentParser:
     rep.add_argument("stage", choices=["feasibility", "validation", "holdout"])
     rep.add_argument("--version", type=int)
     rep.set_defaults(run=cmd_report)
+
+    sub.add_parser(
+        "migrate-trials", help="USER ONLY, once: add the universe column to trials.csv"
+    ).set_defaults(run=cmd_migrate_trials)
     return main
 
 

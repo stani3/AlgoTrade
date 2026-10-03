@@ -15,7 +15,7 @@ from collections.abc import Mapping
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import CostModel, costs_for
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.engine import BacktestResult
 from algotrade.backtest.metrics import aggregate, summarize
 from algotrade.backtest.runner import backtest
@@ -24,16 +24,17 @@ from algotrade.research.dedup import grid_specs, spec_hash
 from algotrade.strategies import from_spec
 
 Costs = CostModel | Mapping[str, CostModel]
+Caps = float | Mapping[str, float]  # max_leverage: one for every symbol, or one per symbol
 
 
 def evaluate(
-    spec: dict, universe: dict[str, pd.DataFrame], costs: Costs, max_leverage: float = 1.0
+    spec: dict, universe: dict[str, pd.DataFrame], costs: Costs, max_leverage: Caps = 1.0
 ) -> tuple[dict[str, BacktestResult], pd.DataFrame]:
     """Backtest one configuration on every symbol: results and per-symbol statistics."""
 
     strategy = from_spec(spec)
     results = {
-        s: backtest(strategy, bars, costs_for(costs, s), max_leverage)
+        s: backtest(strategy, bars, costs_for(costs, s), cap_for(max_leverage, s))
         for s, bars in universe.items()
     }
     return results, pd.DataFrame({s: summarize(r) for s, r in results.items()}).T
@@ -83,13 +84,15 @@ def run_grid(
     grid: dict[str, list],
     universe: dict[str, pd.DataFrame],
     costs: Costs,
-    max_leverage: float = 1.0,
+    max_leverage: Caps = 1.0,
     pool: Pool | None = None,
 ) -> pd.DataFrame:
     """One row per grid combination: its parameters, cross-symbol statistics and spec hash."""
 
     specs = grid_specs(base, grid)
-    jobs = [(specs, bars, costs_for(costs, s), max_leverage) for s, bars in universe.items()]
+    jobs = [
+        (specs, bars, costs_for(costs, s), cap_for(max_leverage, s)) for s, bars in universe.items()
+    ]
     cells = run(_grid_job, jobs, pool)
     return assemble_board(grid, specs, dict(zip(universe, cells, strict=True)))
 

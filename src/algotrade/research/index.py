@@ -21,6 +21,14 @@ def _nearest(ws: Workspace, version) -> str:
     return ", ".join(f"{n['label']} ({n['correlation'] or 0:.2f})" for n in nearest[:2]) or "-"
 
 
+def _where(version) -> str:
+    """The timeframe, and the asset classes if they are not crypto: ``4h``, ``1d (bonds+fx)``."""
+
+    if tuple(version.universe) == ("crypto",):
+        return version.timeframe
+    return f"{version.timeframe} ({'+'.join(version.universe)})"
+
+
 def write_index(ws: Workspace) -> Path:
     journal = Journal(ws.journal_path)
     ideas = journal.ideas()
@@ -60,7 +68,7 @@ def write_index(ws: Workspace) -> Path:
             taxonomy.get("family", ""),
             ", ".join(taxonomy.get("inputs") or []),
             taxonomy.get("horizon", ""),
-            ", ".join(sorted({v.timeframe for v in idea.versions.values()})),
+            ", ".join(sorted({_where(v) for v in idea.versions.values()})),
             source or "-",
             len(idea.versions),
             idea.status,

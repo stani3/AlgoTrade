@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from algotrade.backtest.bracket import BracketSignals, simulate_bracket
-from algotrade.backtest.costs import CostModel, costs_for
+from algotrade.backtest.costs import CostModel, cap_for, costs_for
 from algotrade.backtest.engine import BacktestResult, extract_trades, run_backtest
 from algotrade.backtest.metrics import YEAR, periods_per_year, sharpe_ratio
 from algotrade.parallel import Pool, run
@@ -63,7 +63,11 @@ def make_windows(
 
 
 def out_of_sample(
-    spec: dict, history: pd.DataFrame, start: pd.Timestamp, costs: CostModel
+    spec: dict,
+    history: pd.DataFrame,
+    start: pd.Timestamp,
+    costs: CostModel,
+    max_leverage: float = 1.0,
 ) -> BacktestResult:
     """Trade ``spec`` from ``start`` on, flat at ``start``, signals computed on all ``history``."""
 
@@ -82,7 +86,8 @@ def out_of_sample(
             cooldown_win=strategy.cooldown_win, cooldown_loss=strategy.cooldown_loss,
             kill_drawdown=strategy.kill_drawdown, max_bars=getattr(strategy, "max_bars", 0),
         )  # fmt: skip
-    return run_backtest(part, strategy.target_position(history).reindex(part.index), costs)
+    target = strategy.target_position(history).reindex(part.index)
+    return run_backtest(part, target, costs, max_leverage=max_leverage)
 
 
 def stitch(pieces: list[BacktestResult], costs: CostModel) -> BacktestResult:
@@ -180,6 +185,7 @@ class InSampleTask:
     specs: list[dict]
     windows: list[Window]
     min_in_sample_share: float
+    max_leverage: float = 1.0
 
 
 def in_sample_symbol(task: InSampleTask) -> list[list[tuple[dict, bool]] | None]:
@@ -194,7 +200,7 @@ def in_sample_symbol(task: InSampleTask) -> list[list[tuple[dict, bool]] | None]
         ]
         span = window.out_of_sample_start - window.in_sample_start
         if len(part) and (part.index[-1] - part.index[0]) >= span * task.min_in_sample_share:
-            out.append(grid_symbol(task.specs, part, task.costs))
+            out.append(grid_symbol(task.specs, part, task.costs, task.max_leverage))
         else:
             out.append(None)
     return out
@@ -205,6 +211,7 @@ class OutOfSampleTask:
     bars: pd.DataFrame
     costs: CostModel
     plan: list[tuple[Window, dict]]  # each window with the parameters chosen for it
+    max_leverage: float = 1.0
 
 
 def out_of_sample_symbol(
@@ -219,7 +226,9 @@ def out_of_sample_symbol(
         if not (history.index >= window.out_of_sample_start).any():
             per_window.append(None)
             continue
-        result = out_of_sample(spec, history, window.out_of_sample_start, task.costs)
+        result = out_of_sample(
+            spec, history, window.out_of_sample_start, task.costs, task.max_leverage
+        )
         pieces.append(result)
         per_window.append(
             (
@@ -240,6 +249,7 @@ def walk_forward(
     out_of_sample_months: int,
     min_in_sample_share: float = 0.5,
     pool: Pool | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> WalkForward:
     """Re-optimise on each in-sample window, trade the next out-of-sample one, stitch.
 
@@ -252,7 +262,14 @@ def walk_forward(
     windows = make_windows(first, end, in_sample_years, out_of_sample_months)
     specs = grid_specs(base, grid)
     in_tasks = [
-        InSampleTask(bars, costs_for(costs, symbol), specs, windows, min_in_sample_share)
+        InSampleTask(
+            bars,
+            costs_for(costs, symbol),
+            specs,
+            windows,
+            min_in_sample_share,
+            cap_for(max_leverage, symbol),
+        )
         for symbol, bars in universe.items()
     ]
     cells = dict(zip(universe, run(in_sample_symbol, in_tasks, pool), strict=True))
@@ -271,7 +288,8 @@ def walk_forward(
         bests.append((best, len(in_sample)))
 
     out_tasks = [
-        OutOfSampleTask(bars, costs_for(costs, symbol), plan) for symbol, bars in universe.items()
+        OutOfSampleTask(bars, costs_for(costs, symbol), plan, cap_for(max_leverage, symbol))
+        for symbol, bars in universe.items()
     ]
     found = dict(zip(universe, run(out_of_sample_symbol, out_tasks, pool), strict=True))
 

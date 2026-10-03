@@ -19,6 +19,7 @@ from .holdout import load_result
 from .index import write_index
 from .journal import Journal, VersionState, now
 from .registry import Refused
+from .split import version_symbols
 from .workspace import STAGES, Workspace
 
 
@@ -77,6 +78,18 @@ def decision_markdown(ws: Workspace, version: VersionState, frozen: dict) -> str
         f"- Timeframe: {frozen['timeframe']}, symbols: {', '.join(frozen['symbols'])}",
         f"- Stake (size multiplier meeting Davey's goals): {frozen['stake']}",
         f"- Git tag: `{frozen['tag']}`",
+        *(
+            [
+                (
+                    f"- Asset classes: {', '.join(frozen['universe'])}. Paper trading runs on "
+                    "the Binance and Bybit testnets only, so this strategy stops here until a "
+                    "venue for these markets is added (for example the NautilusTrader "
+                    "Interactive Brokers adapter, or Alpaca paper trading)."
+                )
+            ]
+            if "universe" in frozen
+            else []
+        ),
         "",
         "## Gates",
         "",
@@ -142,8 +155,9 @@ def freeze(ws: Workspace, criteria: Criteria, version: VersionState, commit: boo
         "spec": holdout["spec"],
         "timeframe": version.timeframe,
         "stake": validation.get("stake"),
-        "symbols": criteria.get("data.symbols"),
-        "exchange": criteria.get("data.exchange"),
+        "symbols": version_symbols(criteria, version),
+        "exchange": criteria.get("data.exchange") if version.universe == ("crypto",) else None,
+        **({} if version.universe == ("crypto",) else {"universe": list(version.universe)}),
         "criteria_hash": criteria.hash,
         "frozen_at": now(),
         "tag": tag_name(version),

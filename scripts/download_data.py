@@ -2,7 +2,8 @@
 
 Crypto perpetuals come from the exchange (bars and funding). US stocks and ETFs come from
 Alpaca (free account; ALPACA_API_KEY and ALPACA_SECRET_KEY in .env) and forex from Dukascopy
-(no account), on session-anchored 1h, 4h and daily bars.
+(no account), on session-anchored 1h, 4h and daily bars, with the financing of a position
+(fed funds for US instruments, the rate difference for forex) from FRED.
 
 Examples:
     python -m scripts.download_data                                   # the 10 USDT perps
@@ -63,11 +64,12 @@ def main(exchange_id: str, symbols: list[str], timeframes: list[str], quote: str
 def main_sessions(source: str, symbols: list[str], timeframes: list[str], check: bool) -> int:
     """Stocks and ETFs (Alpaca) or forex (Dukascopy); returns the number of failed symbols."""
 
-    from algotrade.data import alpaca, dukascopy
+    from algotrade.data import alpaca, dukascopy, rates
     from algotrade.data.files import bars_path, read_bars
     from algotrade.data.quality import check_bars
 
     root = load_settings().data_paths.raw
+    financing = Financing()
     if source == "alpaca":
         client, update, errors = alpaca.AlpacaClient(), alpaca.update_equity, alpaca.AlpacaError
     else:
@@ -83,12 +85,41 @@ def main_sessions(source: str, symbols: list[str], timeframes: list[str], check:
             continue
         summary = ", ".join(f"{key}={value}" for key, value in counts.items()) or "up to date"
         print(f"{symbol}: {summary}")
+        try:
+            print(f"  financing: {financing.update(root, source, symbol)} charges")
+        except (rates.RatesError, OSError, KeyError) as exc:
+            print(f"  financing: FAILED ({type(exc).__name__}: {exc})")
         if check:
             for timeframe in timeframes:
                 bars = read_bars(bars_path(root, source, symbol, timeframe))
                 for issue in check_bars(bars, timeframe) if bars is not None else []:
                     print(f"  check {timeframe} {issue}")
     return failed
+
+
+class Financing:
+    """Interest charges for the downloaded symbols; FRED series are fetched once per run."""
+
+    def __init__(self, session=None) -> None:
+        self.session = session
+        self.series: dict[str, object] = {}
+
+    def rate(self, currency: str):
+        from algotrade.data import rates
+
+        if currency not in self.series:
+            self.series[currency] = rates.fetch_series(
+                rates.CURRENCY_SERIES[currency], self.session
+            )
+        return self.series[currency]
+
+    def update(self, root, source: str, symbol: str) -> int:
+        from algotrade.data import rates
+
+        if source == "alpaca":
+            return rates.update_us_financing(root, symbol, self.rate("USD"))
+        currencies = {symbol[:3]: self.rate(symbol[:3]), symbol[3:]: self.rate(symbol[3:])}
+        return rates.update_fx_rollovers(root, symbol, currencies)
 
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:

@@ -22,9 +22,15 @@ import pandas as pd
 
 from algotrade.backtest.costs import CostModel
 from algotrade.backtest.report_html import write_report
-from algotrade.instruments import costs_for_symbols, costs_text, describe
+from algotrade.instruments import (
+    costs_for_symbols,
+    costs_text,
+    describe,
+    registry,
+    universe_key,
+)
 from algotrade.parallel import Pool
-from algotrade.validation.diagnostics import diagnostics
+from algotrade.validation.diagnostics import by_class, diagnostics
 from algotrade.validation.entry_test import SCORINGS
 from algotrade.validation.limited import (
     ChosenRun,
@@ -42,7 +48,7 @@ from .criteria import Check, Criteria, at_least
 from .dedup import set_path, spec_hash
 from .journal import TrialLedger, VersionState
 from .registry import Refused
-from .split import dev_end, dev_universe, window
+from .split import dev_end, dev_universe, position_caps, version_symbols, window
 from .workspace import Workspace
 
 
@@ -140,6 +146,7 @@ def run_feasibility(
     seed: int = 0,
     report: bool = True,
     workers: int | None = None,
+    max_leverage: float | Mapping[str, float] = 1.0,
 ) -> FeasibilityRun:
     """Limited testing over ``universe``: the checks, metrics and notes feasibility records."""
 
@@ -149,11 +156,11 @@ def run_feasibility(
     with Pool(workers) as pool:
         limited = run_limited(
             card_spec, grid, universe, costs, entry_rules, criteria.get(feas + "monkey_runs"),
-            seed, pool,
+            seed, pool, max_leverage,
         )  # fmt: skip
         best = choose(limited.board, keys)
         spec = chosen_spec(card_spec, best, keys)
-        chosen = run_chosen(spec, universe, costs, report, seed, pool)
+        chosen = run_chosen(spec, universe, costs, report, seed, pool, max_leverage)
     entry, per_symbol, monkeys, board = (
         limited.entry, limited.per_symbol, limited.monkeys, limited.board,
     )  # fmt: skip
@@ -210,16 +217,25 @@ def feasibility(
 ) -> results.StageResult:
     require_ready(ws, version, "feasibility", after="build")
     card = read_card(ws.root / version.card_path)
-    universe = dev_universe(ws, criteria, card.timeframe)
+    universe = dev_universe(ws, criteria, card.timeframe, version_symbols(criteria, version))
     costs = costs_for_symbols(criteria, list(universe))
+    caps = position_caps(criteria, list(universe), card.spec)
     found = run_feasibility(card.spec, card.optimise, universe, costs, criteria, seed, report,
-                            workers)  # fmt: skip
+                            workers, caps)  # fmt: skip
     board, per_symbol = found.limited.board, found.limited.per_symbol
 
     folder = ws.stage_dir(version.idea, version.slug, version.version, "feasibility")
     folder.mkdir(parents=True, exist_ok=True)
     for name, text in found.csvs.items():
         (folder / name).write_text(text, encoding="utf-8", newline="")
+    notes, extra = list(found.notes), {}
+    if len(version.universe) > 1:  # evidence per asset class, for the agent to read
+        classes = {s: i.asset_class for s, i in registry(criteria).items() if s in universe}
+        table = by_class(per_symbol, classes, found.limited.entry.table)
+        table.to_csv(folder / "core_by_class.csv")
+        notes.append("By asset class (the card's parameters):\n\n" + _markdown(table))
+    if version.universe != ("crypto",):
+        extra["universe"] = list(version.universe)
 
     ledger_rows = [
         {
@@ -234,6 +250,7 @@ def feasibility(
             "observations": int(pd.Series([len(b) for b in universe.values()]).median()),
             "window": f"dev, before {dev_end(criteria):%Y-%m-%d}",
             "spec": row["spec"],
+            "universe": universe_key(version.universe),
         }
         for _, row in board.iterrows()
     ]
@@ -273,10 +290,10 @@ def feasibility(
         found.checks,
         metrics=found.metrics,
         trials=len(board),
-        notes=found.notes,
+        notes=notes,
         provenance=results.provenance(ws, criteria, version, spec_hash(found.spec), windows),
         report=report_path,
-        extra={"chosen": found.chosen_params, "chosen_spec": found.spec},
+        extra={"chosen": found.chosen_params, "chosen_spec": found.spec, **extra},
     )
     results.record(ws, version, result, commit=commit)
     return result
