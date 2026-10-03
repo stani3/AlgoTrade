@@ -1,0 +1,30 @@
+{
+  "key": "d12e35646d4e805c_1h",
+  "spec": {
+    "type": "i006_squeeze_breakout",
+    "length": 20,
+    "mult": 2.0,
+    "squeeze_bars": 125,
+    "armed_bars": 20,
+    "atr_length": 14,
+    "stop_atr": 2.0,
+    "target_atr": 4.0,
+    "max_bars": 48,
+    "cooldown_win": 0,
+    "cooldown_loss": 0,
+    "kill_drawdown": 1.0,
+    "allow_short": true
+  },
+  "spec_hash": "d12e35646d4e805c",
+  "timeframe": "1h",
+  "source": "idea",
+  "idea": "i006",
+  "version": 1,
+  "label": "i006 v1 Bollinger squeeze breakout",
+  "symbols": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "exchange": "binanceusdm"
+}

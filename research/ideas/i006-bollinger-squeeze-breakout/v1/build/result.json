@@ -1,0 +1,194 @@
+{
+  "idea": "i006",
+  "version": 1,
+  "stage": "build",
+  "verdict": "PASS",
+  "reasons": [],
+  "checks": [
+    {
+      "name": "ruff problems",
+      "value": 0.0,
+      "limit": "<= 0",
+      "passed": true
+    },
+    {
+      "name": "tests pass (i006_squeeze_breakout)",
+      "value": 1.0,
+      "limit": ">= 1",
+      "passed": true
+    },
+    {
+      "name": "line coverage (i006_squeeze_breakout)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    },
+    {
+      "name": "branch coverage (i006_squeeze_breakout)",
+      "value": 1.0,
+      "limit": ">= 100%",
+      "passed": true
+    }
+  ],
+  "metrics": {},
+  "trials": 0,
+  "notes": [
+    "nearest earlier strategy: screened macd (4h, vol target 25%): correlation 0.23, exposure difference 0.76"
+  ],
+  "report": null,
+  "provenance": {
+    "created": "2026-10-03T09:31:40Z",
+    "commit": "664e25cb5b56a718edc159594fafb4dd1743f2b9",
+    "criteria_hash": "5f452e63b833a30c",
+    "card_hash": "21b28885975e3b40",
+    "spec_hash": "d12e35646d4e805c",
+    "data": [
+      {
+        "symbol": "BTC",
+        "timeframe": "1h",
+        "start": "2019-09-08 17:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 49471,
+        "sha": "c3da94de67cbca04"
+      },
+      {
+        "symbol": "ETH",
+        "timeframe": "1h",
+        "start": "2019-11-27 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 47561,
+        "sha": "94ec5dbab1bf5eeb"
+      },
+      {
+        "symbol": "SOL",
+        "timeframe": "1h",
+        "start": "2020-09-14 07:00:00+00:00",
+        "end": "2025-04-30 23:00:00+00:00",
+        "rows": 40553,
+        "sha": "db888c1fd4b31a3f"
+      }
+    ]
+  },
+  "nearest": [
+    {
+      "key": "ea007de0064987f1_4h",
+      "label": "screened macd (4h, vol target 25%)",
+      "correlation": 0.23399384434365725,
+      "difference": 0.7571968398181308,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "macd",
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "mode": "signal",
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "4815c3a48d64c0d0_4h",
+      "label": "screened parabolic_sar (4h, vol target 25%)",
+      "correlation": 0.2187497504437373,
+      "difference": 0.7645185603638767,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "parabolic_sar",
+          "step": 0.02,
+          "max_step": 0.2,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "171533323f4cb43b_4h",
+      "label": "screened bollinger_breakout (4h, vol target 25%)",
+      "correlation": 0.17164608380216215,
+      "difference": 0.8137773922223992,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "bollinger_breakout",
+          "length": 20,
+          "mult": 2.0,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "ce1e118071d1ce3c_4h",
+      "label": "screened momentum (4h, vol target 25%)",
+      "correlation": 0.14697949967519056,
+      "difference": 0.7914058684224549,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "momentum",
+          "lookback": 20,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    },
+    {
+      "key": "bc65fc39ffd340be_4h",
+      "label": "screened donchian_breakout (4h, vol target 25%)",
+      "correlation": 0.11657854332609226,
+      "difference": 0.8172756335583642,
+      "days": 2062,
+      "duplicate": false,
+      "source": "screen",
+      "spec": {
+        "type": "vol_target",
+        "strategy": {
+          "type": "donchian_breakout",
+          "entry": 20,
+          "exit": 10,
+          "allow_short": true
+        },
+        "annual_vol": 0.25,
+        "vol_days": 25.0,
+        "max_leverage": 1.0
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "module": "C:\\Users\\Dexxrey\\development\\gitprojects\\AlgoTrade\\src\\algotrade\\strategies\\ideas\\i006_squeeze_breakout.py",
+      "tests_passed": true,
+      "line": 1.0,
+      "branch": 1.0,
+      "missing_lines": [],
+      "missing_branches": [],
+      "output": "........................................................................ [ 43%]\n........................................................................ [ 86%]\n......................                                                   [100%]\n166 passed in 14.68s"
+    }
+  ],
+  "modules": [
+    "src/algotrade/strategies/ideas/i006_squeeze_breakout.py"
+  ]
+}
