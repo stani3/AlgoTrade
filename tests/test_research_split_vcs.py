@@ -1,15 +1,23 @@
+import json
+
+import numpy as np
 import pandas as pd
 import pytest
 from research_helpers import commits, git, init_repo, make_workspace
 from test_research_journal import register
 
+from algotrade.data.exchange import MarketId, funding_path
 from algotrade.research import vcs
+from algotrade.research.criteria import Criteria
 from algotrade.research.journal import Journal
 from algotrade.research.split import (
+    FUNDING_ALIGNMENT,
     HoldoutViolation,
     bars_hash,
     dev_end,
     dev_universe,
+    for_version,
+    funding_alignment,
     load_dev_bars,
     load_full_bars,
     open_holdout,
@@ -67,6 +75,55 @@ def test_bars_hash_and_window(setup) -> None:
     assert w.to_dict()["symbol"] == "BTC"
     empty = window(bars.iloc[:0], "BTC", "1d")
     assert empty.start == "" and empty.rows == 0
+
+
+def test_funding_alignment_is_legacy_when_criteria_do_not_name_one() -> None:
+    assert funding_alignment(Criteria(values={"data": {}}, hash="x")) == "raw_timestamp"
+    fixed = Criteria(values={"data": {"funding_alignment": "nearest_second"}}, hash="x")
+    assert funding_alignment(fixed) == "nearest_second"
+
+
+def test_loaders_align_funding_as_the_criteria_say(tmp_path) -> None:
+    ws, criteria = make_workspace(tmp_path, repo=False)
+    path = funding_path(ws.raw_data, MarketId("binanceusdm", "BTC"))
+    on_the_hour = pd.read_parquet(path)
+    expected = load_full_bars(ws, criteria, "BTC", "4h")["funding_rate"]
+    # Stamp every settlement 23 ms late, as Binance does.
+    late = on_the_hour.assign(timestamp=on_the_hour["timestamp"] + pd.Timedelta("23ms"))
+    late.to_parquet(path, index=False)
+
+    fixed = criteria.with_value(FUNDING_ALIGNMENT, "nearest_second")
+    pd.testing.assert_series_equal(load_full_bars(ws, fixed, "BTC", "4h")["funding_rate"], expected)
+    dev = load_dev_bars(ws, fixed, "BTC", "4h")["funding_rate"]
+    pd.testing.assert_series_equal(dev, expected[expected.index < dev_end(criteria)])
+    # The legacy alignment charges every one of them a bar late.
+    raw = criteria.with_value(FUNDING_ALIGNMENT, "raw_timestamp")
+    legacy = load_full_bars(ws, raw, "BTC", "4h")["funding_rate"].to_numpy()
+    assert np.array_equal(legacy[1:], expected.to_numpy()[:-1]) and legacy[0] != 0
+
+
+def test_a_version_keeps_the_alignment_of_its_recorded_results(tmp_path) -> None:
+    ws, criteria = make_workspace(tmp_path, repo=False, market=False)
+    journal = Journal(ws.journal_path)
+    register(journal)
+    version = journal.ideas()["i001"].latest
+    fixed = criteria.with_value(FUNDING_ALIGNMENT, "nearest_second")
+    # No result yet: the version follows criteria.yaml.
+    assert for_version(ws, fixed, version) is fixed
+    assert for_version(ws, criteria, version) is criteria
+
+    # A result recorded before data.funding_alignment existed was made with the legacy one.
+    build = ws.stage_dir("i001", "fast-trend", 1, "build")
+    build.mkdir(parents=True)
+    (build / "result.json").write_text(json.dumps({"provenance": {"criteria_hash": "x"}}))
+    pinned = for_version(ws, fixed, version)
+    assert funding_alignment(pinned) == "raw_timestamp" and pinned.hash == fixed.hash
+    assert funding_alignment(fixed) == "nearest_second"  # the criteria themselves are untouched
+
+    # Whatever a result recorded wins over criteria.yaml.
+    provenance = {"provenance": {"funding_alignment": "nearest_second"}}
+    (build / "result.json").write_text(json.dumps(provenance))
+    assert funding_alignment(for_version(ws, criteria, version)) == "nearest_second"
 
 
 def test_holdout_is_looked_at_once_unless_forced(tmp_path) -> None:

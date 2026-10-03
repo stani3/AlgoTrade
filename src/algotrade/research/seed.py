@@ -28,7 +28,7 @@ from .dedup import spec_hash
 from .index import write_index
 from .journal import Journal, TrialLedger, now
 from .registry import Refused
-from .split import dev_universe
+from .split import dev_universe, funding_alignment
 from .workspace import Workspace
 
 PRE_JOURNAL = "full history 2019-2026, holdout included (pre-journal)"
@@ -208,7 +208,8 @@ def seed(ws: Workspace, criteria: Criteria, commit: bool = True) -> dict:
         key = store.key(spec_hash(spec), timeframe)
         if not store.exists(key):
             frame = fingerprint.compute(spec, universes[timeframe], costs)
-            base = {"spec": spec, "spec_hash": spec_hash(spec), "timeframe": timeframe}
+            base = {"spec": spec, "spec_hash": spec_hash(spec), "timeframe": timeframe,
+                    "funding_alignment": funding_alignment(criteria)}  # fmt: skip
             store.save(key, frame, {**base, **meta, "symbols": symbols})
 
     book = journal.ideas()["i001"]

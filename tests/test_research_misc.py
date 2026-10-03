@@ -10,7 +10,7 @@ from test_research_journal import register as journal_register
 
 from algotrade.research import fingerprint
 from algotrade.research.buildcheck import BuildOutcome
-from algotrade.research.criteria import at_least
+from algotrade.research.criteria import Criteria, at_least
 from algotrade.research.dedup import Region, region, structure
 from algotrade.research.index import write_index
 from algotrade.research.journal import Journal
@@ -123,3 +123,12 @@ def test_print_result_shows_chosen_parameters_and_report(capsys) -> None:
     out = capsys.readouterr().out
     assert "chosen fast = 16" in out and "report: reports/research" in out
     assert "FEASIBILITY PASS" in out
+
+
+def test_criteria_with_value_is_a_copy_that_keeps_the_file_hash() -> None:
+    criteria = Criteria(values={"data": {"exchange": "binanceusdm"}}, hash="abc")
+    changed = criteria.with_value("data.funding_alignment", "nearest_second")
+    assert changed.get("data.funding_alignment") == "nearest_second"
+    assert changed.get("data.exchange") == "binanceusdm" and changed.hash == "abc"
+    assert criteria.get("data.funding_alignment", None) is None
+    assert criteria.with_value("new.section.key", 1).get("new.section.key") == 1

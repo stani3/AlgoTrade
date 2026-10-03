@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import math
 from collections.abc import Callable
@@ -32,6 +33,17 @@ class Criteria:
                 raise KeyError(f"criteria.yaml has no '{dotted}'")
             node = node[key]
         return node
+
+    def with_value(self, dotted: str, value: Any) -> Criteria:
+        """A copy with ``dotted`` set to ``value``; ``hash`` still names the file it came from."""
+
+        values = copy.deepcopy(self.values)
+        node = values
+        *parents, last = dotted.split(".")
+        for key in parents:
+            node = node.setdefault(key, {})
+        node[last] = value
+        return Criteria(values=values, hash=self.hash)
 
 
 def load_criteria(path: Path) -> Criteria:

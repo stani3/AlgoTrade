@@ -34,7 +34,7 @@ from .criteria import Criteria, at_least
 from .dedup import set_path, spec_hash
 from .journal import TrialLedger, VersionState
 from .registry import Refused
-from .split import dev_end, dev_universe, window
+from .split import dev_end, dev_universe, for_version, window
 from .workspace import Workspace
 
 
@@ -90,6 +90,7 @@ def feasibility(
     seed: int = 0,
 ) -> results.StageResult:
     require_ready(ws, version, "feasibility", after="build")
+    criteria = for_version(ws, criteria, version)
     card = read_card(ws.root / version.card_path)
     universe = dev_universe(ws, criteria, card.timeframe)
     costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
