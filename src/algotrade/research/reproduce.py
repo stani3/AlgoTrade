@@ -13,9 +13,9 @@ import math
 
 import pandas as pd
 
-from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.instruments import costs_for_symbols
 from algotrade.parallel import Pool
 from algotrade.validation.optimize import evaluate
 
@@ -64,7 +64,6 @@ def _reproduce(
     ws: Workspace, criteria: Criteria, version: VersionState, stage: str, pool: Pool
 ) -> str:
     recorded = load_result(ws, version, stage)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
     card = read_card(ws.root / version.card_path)
     title = f"{version.idea} v{version.version} {stage} (reproduced)"
     if stage == "feasibility":
@@ -73,13 +72,15 @@ def _reproduce(
             recorded["provenance"]["data"],
             [window(b, s, card.timeframe) for s, b in universe.items()],
         )
-        found, per_symbol = evaluate(recorded["chosen_spec"], universe, costs)
+        found, per_symbol = evaluate(
+            recorded["chosen_spec"], universe, costs_for_symbols(criteria, list(universe))
+        )
         _check_metric(
             recorded["metrics"][HEADLINE[stage]],
             float(per_symbol["sharpe"].median()),
             HEADLINE[stage],
         )
-        pairs = [(universe[s], r) for s, r in found.items()]
+        pairs = {s: (universe[s], r) for s, r in found.items()}
         settings = {"Strategy spec": json.dumps(recorded["chosen_spec"])}
     elif stage == "validation":
         universe = dev_universe(ws, criteria, card.timeframe)
@@ -93,7 +94,7 @@ def _reproduce(
             deflation(ws, wf.results)["annualised_sharpe"],
             HEADLINE[stage],
         )
-        pairs = [(universe[s], r) for s, r in wf.results.items()]
+        pairs = {s: (universe[s], r) for s, r in wf.results.items()}
         settings = {"Base spec": json.dumps(card.spec), "Walk-forward": "as recorded"}
     elif stage == "holdout":
         found = holdout_results(ws, criteria, recorded["spec"], card.timeframe)
@@ -110,11 +111,14 @@ def _reproduce(
             float(pd.Series(sharpes).median()),
             "holdout median Sharpe",
         )
-        pairs = list(found.values())
+        pairs = found
         settings = {"Strategy spec": json.dumps(recorded["spec"])}
     else:
         raise Refused(f"no report to reproduce for stage '{stage}'")
-    reports, sections = render_reports([(r, bars, costs) for bars, r in pairs], 0, pool)
+    costs = costs_for_symbols(criteria, list(pairs))
+    reports, sections = render_reports(
+        [(r, bars, costs[s]) for s, (bars, r) in pairs.items()], 0, pool
+    )
     page = write_report(
         reports, ws.report_dir(version.idea, version.version, stage), title, settings, sections
     )

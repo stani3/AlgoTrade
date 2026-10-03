@@ -20,8 +20,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from algotrade.backtest.costs import EXCHANGE_COSTS, CostModel
+from algotrade.backtest.costs import CostModel
 from algotrade.backtest.report_html import write_report
+from algotrade.instruments import costs_for_symbols, costs_text, describe
 from algotrade.parallel import Pool
 from algotrade.validation.diagnostics import diagnostics
 from algotrade.validation.entry_test import SCORINGS
@@ -210,7 +211,7 @@ def feasibility(
     require_ready(ws, version, "feasibility", after="build")
     card = read_card(ws.root / version.card_path)
     universe = dev_universe(ws, criteria, card.timeframe)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
+    costs = costs_for_symbols(criteria, list(universe))
     found = run_feasibility(card.spec, card.optimise, universe, costs, criteria, seed, report,
                             workers)  # fmt: skip
     board, per_symbol = found.limited.board, found.limited.per_symbol
@@ -254,9 +255,9 @@ def feasibility(
         settings = {
             "Idea": f"{version.idea} v{version.version}: {version.title}",
             "Strategy spec (chosen from the grid plateau)": json.dumps(found.spec),
-            "Data": f"{criteria.get('data.exchange')} {card.timeframe}, development period "
+            "Data": f"{describe(criteria, list(universe), card.timeframe)}, development period "
             f"(before {dev_end(criteria):%Y-%m-%d})",
-            "Costs": f"fee {costs.fee_bps} bps + slippage {costs.slippage_bps} bps, funding on",
+            "Costs": costs_text(costs),
         }
         page = write_report(
             found.chosen.reports, ws.report_dir(version.idea, version.version, "feasibility"),

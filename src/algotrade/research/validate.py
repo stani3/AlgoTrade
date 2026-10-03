@@ -17,11 +17,11 @@ import json
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.engine import BacktestResult, run_backtest
 from algotrade.backtest.metrics import periods_per_year
 from algotrade.backtest.report import MIN_MC_TRADES
 from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.instruments import costs_for_symbols, describe
 from algotrade.parallel import Pool
 from algotrade.validation.overfitting import deflated_sharpe, expected_max_sharpe, moments
 from algotrade.validation.sizing import choose_stake, closed_trade_returns, limits, trades_per_year
@@ -86,7 +86,7 @@ def run_walk_forward(
     ws: Workspace, criteria: Criteria, card, pool: Pool | None = None
 ) -> tuple[WalkForward, dict]:
     universe = dev_universe(ws, criteria, card.timeframe)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
+    costs = costs_for_symbols(criteria, list(universe))
     wf = walk_forward(
         card.spec,
         card.optimise,
@@ -111,11 +111,11 @@ def validate(
 ) -> results.StageResult:
     require_ready(ws, version, "validation", after="feasibility")
     card = read_card(ws.root / version.card_path)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
     with Pool(workers) as pool:
         wf, universe = run_walk_forward(ws, criteria, card, pool)
+        costs = costs_for_symbols(criteria, list(universe))
         reports, sections = (
-            render_reports([(r, universe[s], costs) for s, r in wf.results.items()], seed, pool)
+            render_reports([(r, universe[s], costs[s]) for s, r in wf.results.items()], seed, pool)
             if report and wf.results
             else ([], [])
         )
@@ -196,7 +196,7 @@ def validate(
             f"{criteria.get(v + 'out_of_sample_months')} months out-of-sample, rolling; "
             "each window re-optimised on the pre-registered grid",
             "Base spec": json.dumps(card.spec),
-            "Data": f"{criteria.get('data.exchange')} {card.timeframe}, out-of-sample pieces of "
+            "Data": f"{describe(criteria, list(universe), card.timeframe)}, out-of-sample pieces of "
             f"the development period (before {dev_end(criteria):%Y-%m-%d})",
         }
         page = write_report(

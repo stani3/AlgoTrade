@@ -212,3 +212,73 @@ def frozen_workspace(root: Path, overrides: dict | None = None) -> tuple[Workspa
         assert result.verdict == "PASS", (result.stage, result.reasons)
     freeze(ws, criteria, find_version(ws, "i001"))
     return ws, criteria
+
+
+# --- other asset classes ------------------------------------------------------------------
+
+UNIVERSES = {
+    "bonds": {"source": "alpaca", "start": "2023-01-01", "symbols": ["TLT", "IEF"],
+              "costs": {"fee_bps": 0.5, "slippage_bps": 2.0},
+              "cost_overrides": {"IEF": {"slippage_bps": 5.0}}, "financing": "fed_funds",
+              "max_leverage": 10.0},
+    "fx": {"source": "dukascopy", "start": "2023-01-01", "symbols": ["EURUSD"],
+           "costs": {"fee_bps": 0.3, "slippage_bps": 1.0}, "financing": "rate_difference",
+           "max_leverage": 10.0},
+}  # fmt: skip
+SESSION_TIMEFRAMES = ("1h", "4h", "1d")
+
+
+def session_index(source: str, timeframe: str, start: str, end: str) -> pd.DatetimeIndex:
+    """Bar-open times of a session market: NYSE regular hours, or the forex week."""
+
+    from algotrade.data.sessions import fx_label, session_buckets, us_equity_sessions
+
+    if source == "alpaca":
+        buckets = session_buckets(us_equity_sessions(start, end), timeframe)
+        return pd.DatetimeIndex(buckets["start"])
+    hours = pd.date_range(start, end, freq="1h", tz="UTC", inclusive="left")
+    local = hours.tz_convert("America/New_York")
+    open_week = (
+        ((local.dayofweek == 6) & (local.hour >= 17))
+        | (local.dayofweek <= 3)
+        | ((local.dayofweek == 4) & (local.hour < 17))
+    )
+    return pd.DatetimeIndex(fx_label(hours[open_week], timeframe).unique())
+
+
+def write_session_market(
+    root: Path,
+    universes: dict = UNIVERSES,
+    start: str = "2022-06-01",
+    end: str = "2026-01-01",
+    edge: float = 0.0,
+) -> None:
+    """Synthetic bars for every symbol of ``universes`` (stored like downloaded data, with
+    history from before each class's start date)."""
+
+    from algotrade.data.files import bars_path, write_bars
+
+    for number, (asset_class, spec) in enumerate(universes.items()):
+        for i, symbol in enumerate(spec["symbols"]):
+            for timeframe in SESSION_TIMEFRAMES:
+                index = session_index(spec["source"], timeframe, start, end)
+                frame = random_walk(index, 300 + 10 * number + i, edge)
+                write_bars(frame, bars_path(root, spec["source"], symbol, timeframe))
+
+
+def random_walk(index: pd.DatetimeIndex, seed: int, edge: float = 0.0) -> pd.DataFrame:
+    """Bars on ``index``: a random walk with slow waves, plus planted trends if ``edge``."""
+
+    rng = np.random.default_rng(seed)
+    n = len(index)
+    trend = np.sin(np.arange(n) / (n / 9)) * 0.002
+    if edge:
+        trend = trend + edge * np.repeat(rng.choice([-1.0, 1.0], n // 120 + 1), 120)[:n]
+    close = 100 * np.exp(np.cumsum(rng.normal(0, 0.01, n) + trend))
+    open_ = np.concatenate(([close[0]], close[:-1]))
+    spread = np.abs(rng.normal(0, 0.005, n))
+    return pd.DataFrame(
+        {"open": open_, "high": np.maximum(open_, close) * (1 + spread),
+         "low": np.minimum(open_, close) * (1 - spread), "close": close, "volume": 1.0},
+        index=index,
+    )  # fmt: skip

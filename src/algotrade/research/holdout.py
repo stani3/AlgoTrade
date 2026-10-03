@@ -17,9 +17,9 @@ import json
 import numpy as np
 import pandas as pd
 
-from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
 from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.instruments import CRYPTO, costs_for_symbols, describe, symbols_for
 from algotrade.parallel import Pool
 from algotrade.validation.bands import block_bootstrap
 from algotrade.validation.walkforward import out_of_sample
@@ -48,14 +48,23 @@ def load_result(ws: Workspace, version: VersionState, stage: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def holdout_results(ws: Workspace, criteria: Criteria, spec: dict, timeframe: str) -> dict:
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
+def holdout_results(
+    ws: Workspace,
+    criteria: Criteria,
+    spec: dict,
+    timeframe: str,
+    symbols: list[str] | None = None,
+) -> dict:
+    """``spec`` traded from the holdout cutoff on every symbol (default: crypto) with data."""
+
+    symbols = symbols or symbols_for(criteria, (CRYPTO,))
+    costs = costs_for_symbols(criteria, symbols)
     start = dev_end(criteria)
     out = {}
-    for symbol in criteria.get("data.symbols"):
+    for symbol in symbols:
         bars = load_full_bars(ws, criteria, symbol, timeframe)
         if (bars.index >= start).sum() > 1:
-            out[symbol] = (bars, out_of_sample(spec, bars, start, costs))
+            out[symbol] = (bars, out_of_sample(spec, bars, start, costs[symbol]))
     return out
 
 
@@ -78,7 +87,7 @@ def holdout(
     open_holdout(Journal(ws.journal_path), version, force=force, reason=reason)
     card_timeframe = version.timeframe
     found = holdout_results(ws, criteria, spec, card_timeframe)
-    costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
+    costs = costs_for_symbols(criteria, list(found))
 
     sharpes, drawdowns, trades = [], [], []
     for _, result in found.values():
@@ -123,12 +132,12 @@ def holdout(
     if report and found:
         with Pool(workers) as pool:
             reports, sections = render_reports(
-                [(r, bars, costs) for bars, r in found.values()], seed, pool
+                [(r, bars, costs[s]) for s, (bars, r) in found.items()], seed, pool
             )
         settings = {
             "Idea": f"{version.idea} v{version.version}: {version.title}",
             "Strategy spec": json.dumps(spec),
-            "Data": f"holdout: {criteria.get('data.exchange')} {card_timeframe} from "
+            "Data": f"holdout: {describe(criteria, list(found), card_timeframe)} from "
             f"{dev_end(criteria):%Y-%m-%d} to the end of the data, starting flat",
         }
         page = write_report(

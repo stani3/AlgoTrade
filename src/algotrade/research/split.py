@@ -13,7 +13,8 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-from algotrade.data.market import load_market
+from algotrade.data.market import load_instrument, load_market
+from algotrade.instruments import CRYPTO, registry, symbols_for
 
 from .criteria import Criteria
 from .journal import Journal, VersionState
@@ -82,7 +83,7 @@ def load_dev_bars(
         raise HoldoutViolation(
             f"requested data up to {end}, but development data ends at {cutoff:%Y-%m-%d}"
         )
-    bars = load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
+    bars = _load(ws, criteria, symbol, timeframe)
     stop = cutoff if end is None else _stamp(end)
     bars = bars[bars.index < stop]
     if start is not None:
@@ -93,7 +94,7 @@ def load_dev_bars(
 def dev_universe(
     ws: Workspace, criteria: Criteria, timeframe: str, symbols: list[str] | None = None
 ) -> dict[str, pd.DataFrame]:
-    names = symbols or criteria.get("data.symbols")
+    names = symbols or symbols_for(criteria, (CRYPTO,))
     return {s: load_dev_bars(ws, criteria, s, timeframe) for s in names}
 
 
@@ -120,4 +121,14 @@ def open_holdout(
 def load_full_bars(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.DataFrame:
     """All stored bars. Only for the holdout stage (after :func:`open_holdout`) and incubation."""
 
-    return load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
+    return _load(ws, criteria, symbol, timeframe)
+
+
+def _load(ws: Workspace, criteria: Criteria, symbol: str, timeframe: str) -> pd.DataFrame:
+    """A registered instrument from its source; any other symbol as a perpetual on the
+    criteria's exchange (as before instruments were registered)."""
+
+    instrument = registry(criteria).get(symbol)
+    if instrument is None:
+        return load_market(ws.raw_data, criteria.get("data.exchange"), symbol, timeframe)
+    return load_instrument(ws.raw_data, instrument, timeframe)
