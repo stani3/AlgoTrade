@@ -12,6 +12,10 @@ data:
   dev_end: "2025-05-01"
   # Fixed reference set for behavioural fingerprints (positions only, dev period).
   fingerprint_symbols: [BTC, ETH, SOL]
+  # How funding settlements are put on bars (README, "Funding alignment"). nearest_second rounds
+  # Binance's stamps (0-47 ms after the hour) to the second; raw_timestamp, which a missing key
+  # means, charged about 45% of settlements one bar late. Tested idea versions keep their own.
+  funding_alignment: nearest_second
 
 budgets:
   ideas_per_run: 5
