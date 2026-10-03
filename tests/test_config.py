@@ -5,7 +5,8 @@ import pytest
 from algotrade.config import DATA_ROOT_ENV, DEFAULT_SETTINGS, data_root_override, load_settings
 
 
-def test_without_override_the_defaults_apply() -> None:
+def test_without_override_the_defaults_apply(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
     assert data_root_override() is None
     assert load_settings() is DEFAULT_SETTINGS
 

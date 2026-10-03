@@ -20,8 +20,9 @@ import pandas as pd
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.engine import BacktestResult, run_backtest
 from algotrade.backtest.metrics import periods_per_year
-from algotrade.backtest.report import MIN_MC_TRADES, build_report
-from algotrade.backtest.report_html import write_report
+from algotrade.backtest.report import MIN_MC_TRADES
+from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.parallel import Pool
 from algotrade.validation.overfitting import deflated_sharpe, expected_max_sharpe, moments
 from algotrade.validation.sizing import choose_stake, closed_trade_returns, limits, trades_per_year
 from algotrade.validation.walkforward import WalkForward, walk_forward
@@ -81,7 +82,9 @@ def benchmark(bars: pd.DataFrame, index: pd.DatetimeIndex, costs) -> BacktestRes
     return run_backtest(part, pd.Series(1.0, index=part.index), costs)
 
 
-def run_walk_forward(ws: Workspace, criteria: Criteria, card) -> tuple[WalkForward, dict]:
+def run_walk_forward(
+    ws: Workspace, criteria: Criteria, card, pool: Pool | None = None
+) -> tuple[WalkForward, dict]:
     universe = dev_universe(ws, criteria, card.timeframe)
     costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
     wf = walk_forward(
@@ -92,6 +95,7 @@ def run_walk_forward(ws: Workspace, criteria: Criteria, card) -> tuple[WalkForwa
         dev_end(criteria),
         criteria.get("validation.in_sample_years"),
         criteria.get("validation.out_of_sample_months"),
+        pool=pool,
     )
     return wf, universe
 
@@ -103,11 +107,18 @@ def validate(
     commit: bool = True,
     report: bool = True,
     seed: int = 0,
+    workers: int | None = None,
 ) -> results.StageResult:
     require_ready(ws, version, "validation", after="feasibility")
     card = read_card(ws.root / version.card_path)
     costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
-    wf, universe = run_walk_forward(ws, criteria, card)
+    with Pool(workers) as pool:
+        wf, universe = run_walk_forward(ws, criteria, card, pool)
+        reports, sections = (
+            render_reports([(r, universe[s], costs) for s, r in wf.results.items()], seed, pool)
+            if report and wf.results
+            else ([], [])
+        )
     v = "validation."
     checks = [
         at_least("walk-forward efficiency (OOS / IS annualised return)", wf.efficiency,
@@ -179,10 +190,6 @@ def validate(
 
     report_path = None
     if report and wf.results:
-        reports = [
-            build_report(r, benchmark=benchmark(universe[s], r.ledger.index, costs), seed=seed)
-            for s, r in wf.results.items()
-        ]
         settings = {
             "Idea": f"{version.idea} v{version.version}: {version.title}",
             "Walk-forward": f"{criteria.get(v + 'in_sample_years')} years in-sample, "
@@ -194,7 +201,7 @@ def validate(
         }
         page = write_report(
             reports, ws.report_dir(version.idea, version.version, "validation"),
-            f"{version.idea} v{version.version} walk-forward out-of-sample", settings,
+            f"{version.idea} v{version.version} walk-forward out-of-sample", settings, sections,
         )  # fmt: skip
         report_path = ws.relative(page)
 

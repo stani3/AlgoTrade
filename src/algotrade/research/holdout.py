@@ -19,8 +19,8 @@ import pandas as pd
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
-from algotrade.backtest.report import build_report
-from algotrade.backtest.report_html import write_report
+from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.parallel import Pool
 from algotrade.validation.bands import block_bootstrap
 from algotrade.validation.walkforward import out_of_sample
 
@@ -31,7 +31,6 @@ from .feasibility import require_ready
 from .journal import Journal, VersionState
 from .registry import Refused
 from .split import dev_end, load_full_bars, open_holdout, window
-from .validate import benchmark
 from .workspace import Workspace
 
 BOOTSTRAP_BLOCK_DAYS = 10
@@ -69,6 +68,7 @@ def holdout(
     commit: bool = True,
     report: bool = True,
     seed: int = 0,
+    workers: int | None = None,
 ) -> results.StageResult:
     require_ready(ws, version, "holdout", after="validation", repeat=force)
     feasibility = load_result(ws, version, "feasibility")
@@ -121,10 +121,10 @@ def holdout(
 
     report_path = None
     if report and found:
-        reports = [
-            build_report(r, benchmark=benchmark(bars, r.ledger.index, costs), seed=seed)
-            for bars, r in found.values()
-        ]
+        with Pool(workers) as pool:
+            reports, sections = render_reports(
+                [(r, bars, costs) for bars, r in found.values()], seed, pool
+            )
         settings = {
             "Idea": f"{version.idea} v{version.version}: {version.title}",
             "Strategy spec": json.dumps(spec),
@@ -133,7 +133,7 @@ def holdout(
         }
         page = write_report(
             reports, ws.report_dir(version.idea, version.version, "holdout"),
-            f"{version.idea} v{version.version} holdout", settings,
+            f"{version.idea} v{version.version} holdout", settings, sections,
         )  # fmt: skip
         report_path = ws.relative(page)
 

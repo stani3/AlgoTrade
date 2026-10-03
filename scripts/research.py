@@ -132,15 +132,19 @@ def cmd_feasibility(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
     result = feasibility(
-        ws, criteria, version, commit=not args.no_commit, report=not args.no_report
-    )
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report,
+        workers=args.workers,
+    )  # fmt: skip
     return print_result(result)
 
 
 def cmd_validate(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
-    result = validate(ws, criteria, version, commit=not args.no_commit, report=not args.no_report)
+    result = validate(
+        ws, criteria, version, commit=not args.no_commit, report=not args.no_report,
+        workers=args.workers,
+    )  # fmt: skip
     if result.extra.get("stake"):
         print(f"stake {result.extra['stake']:g}x")
     return print_result(result)
@@ -153,7 +157,7 @@ def cmd_holdout(ws: Workspace, args: argparse.Namespace) -> int:
     version = find_version(ws, args.idea, args.version)
     result = holdout(
         ws, criteria, version, force=args.force, reason=args.reason or "",
-        commit=not args.no_commit, report=not args.no_report,
+        commit=not args.no_commit, report=not args.no_report, workers=args.workers,
     )  # fmt: skip
     return print_result(result)
 
@@ -198,7 +202,8 @@ def cmd_incubation_report(ws: Workspace, args: argparse.Namespace) -> int:
 def cmd_report(ws: Workspace, args: argparse.Namespace) -> int:
     criteria = load_criteria(ws.criteria_path)
     version = find_version(ws, args.idea, args.version)
-    print(f"Report written to {reproduce(ws, criteria, version, args.stage)}")
+    page = reproduce(ws, criteria, version, args.stage, workers=args.workers)
+    print(f"Report written to {page}")
     return 0
 
 
@@ -208,6 +213,11 @@ def parser() -> argparse.ArgumentParser:
     )
     main.add_argument("--root", type=Path, default=Path.cwd(), help="Repository root")
     main.add_argument("--no-commit", action="store_true", help="Write results but do not commit")
+    main.add_argument(
+        "--workers",
+        type=int,
+        help="Worker processes for per-symbol jobs (default: ALGOTRADE_WORKERS or CPUs - 2)",
+    )
     sub = main.add_subparsers(dest="command", required=True)
 
     sub.add_parser("seed", help="Import pre-journal experiments (once)").set_defaults(run=cmd_seed)

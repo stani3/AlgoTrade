@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 
 import pytest
@@ -25,8 +26,10 @@ from legacy_serial import legacy_feasibility
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.config import data_root_override
+from algotrade.parallel import ENV
 from algotrade.research.cards import read_card
 from algotrade.research.criteria import Criteria, load_criteria
+from algotrade.research.feasibility import run_feasibility
 from algotrade.research.split import dev_universe, window
 from algotrade.research.workspace import Workspace
 from algotrade.validation.optimize import evaluate
@@ -34,7 +37,8 @@ from algotrade.validation.optimize import evaluate
 pytestmark = pytest.mark.slow
 
 REPO = Path(__file__).resolve().parent.parent
-DATA = data_root_override() or REPO / "data" / "raw"  # read before conftest clears the variable
+DATA = data_root_override() or REPO / "data" / "raw"
+WORKERS = int(os.environ.get(ENV) or 4)  # read at import: tests run inline otherwise
 FROZEN = Path(__file__).parent / "fixtures" / "criteria_2026-10-03.yaml"
 HEADLINE = "median Sharpe at the chosen parameters"
 
@@ -73,6 +77,26 @@ def _costs(criteria: Criteria):
     return EXCHANGE_COSTS[exchange]
 
 
+def _lf(text: str) -> str:
+    return text.replace("\r\n", "\n")
+
+
+def _parallel(card, universe: dict, costs, criteria: Criteria) -> dict:
+    """The production code with worker processes (ALGOTRADE_WORKERS, default 4 here)."""
+
+    found = run_feasibility(card.spec, card.optimise, universe, costs, criteria, report=False,
+                            workers=WORKERS)  # fmt: skip
+    return {
+        "checks": [c.to_dict() for c in found.checks],
+        "metrics": found.metrics,
+        "notes": found.notes,
+        "trials": len(found.limited.board),
+        "chosen": found.chosen_params,
+        "chosen_spec": found.spec,
+        "csvs": found.csvs,
+    }
+
+
 def test_feasibility_records_reproduce_exactly() -> None:
     frozen = load_criteria(FROZEN)
     checked, unverifiable = [], []
@@ -86,18 +110,23 @@ def test_feasibility_records_reproduce_exactly() -> None:
             if universe is None:
                 unverifiable.append(f"{path.parent.parent.parent.name} ({criteria.hash})")
                 continue
-            again = legacy_feasibility(card.spec, card.optimise, universe, _costs(criteria), frozen)
-            name = f"{path.parent.parent.parent.name} under criteria {criteria.hash}"
-            assert again["checks"] == record["checks"], name
-            assert again["metrics"] == record["metrics"], name
-            assert again["notes"] == record["notes"], name
-            assert again["trials"] == record["trials"], name
-            assert again["chosen"] == record["chosen"], name
-            assert again["chosen_spec"] == record["chosen_spec"], name
-            for file, text in again["csvs"].items():
-                stored = (path.parent / file).read_text(encoding="utf-8").replace("\r\n", "\n")
-                assert text.replace("\r\n", "\n") == stored, f"{name}: {file}"
-            checked.append(name)
+            costs = _costs(criteria)
+            for how, again in (
+                ("serial reference", legacy_feasibility(card.spec, card.optimise, universe, costs,
+                                                        frozen)),
+                ("parallel", _parallel(card, universe, costs, frozen)),
+            ):  # fmt: skip
+                name = f"{path.parent.parent.parent.name} under criteria {criteria.hash}, {how}"
+                assert again["checks"] == record["checks"], name
+                assert again["metrics"] == record["metrics"], name
+                assert again["notes"] == record["notes"], name
+                assert again["trials"] == record["trials"], name
+                assert again["chosen"] == record["chosen"], name
+                assert again["chosen_spec"] == record["chosen_spec"], name
+                for file, text in again["csvs"].items():
+                    stored = (path.parent / file).read_text(encoding="utf-8")
+                    assert _lf(text) == _lf(stored), f"{name}: {file}"
+                checked.append(name)
     assert checked, f"no feasibility record could be checked; unverifiable: {unverifiable}"
     assert not unverifiable, f"data changed or missing for {unverifiable}"
 

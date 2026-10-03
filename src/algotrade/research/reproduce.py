@@ -15,8 +15,8 @@ import pandas as pd
 
 from algotrade.backtest.costs import EXCHANGE_COSTS
 from algotrade.backtest.metrics import periods_per_year, sharpe_ratio
-from algotrade.backtest.report import build_report
-from algotrade.backtest.report_html import write_report
+from algotrade.backtest.report_html import render_reports, write_report
+from algotrade.parallel import Pool
 from algotrade.validation.optimize import evaluate
 
 from .cards import read_card
@@ -25,7 +25,7 @@ from .holdout import holdout_results, load_result
 from .journal import VersionState
 from .registry import Refused
 from .split import dev_end, dev_universe, window
-from .validate import benchmark, deflation, run_walk_forward
+from .validate import deflation, run_walk_forward
 from .workspace import Workspace
 
 HEADLINE = {
@@ -49,7 +49,20 @@ def _check_metric(expected: float, actual: float, name: str) -> None:
         raise Refused(f"reproduced {name} {actual!r} differs from the committed {expected!r}")
 
 
-def reproduce(ws: Workspace, criteria: Criteria, version: VersionState, stage: str) -> str:
+def reproduce(
+    ws: Workspace,
+    criteria: Criteria,
+    version: VersionState,
+    stage: str,
+    workers: int | None = None,
+) -> str:
+    with Pool(workers) as pool:
+        return _reproduce(ws, criteria, version, stage, pool)
+
+
+def _reproduce(
+    ws: Workspace, criteria: Criteria, version: VersionState, stage: str, pool: Pool
+) -> str:
     recorded = load_result(ws, version, stage)
     costs = EXCHANGE_COSTS[criteria.get("data.exchange")]
     card = read_card(ws.root / version.card_path)
@@ -74,7 +87,7 @@ def reproduce(ws: Workspace, criteria: Criteria, version: VersionState, stage: s
             recorded["provenance"]["data"],
             [window(b, s, card.timeframe) for s, b in universe.items()],
         )
-        wf, _ = run_walk_forward(ws, criteria, card)
+        wf, _ = run_walk_forward(ws, criteria, card, pool)
         _check_metric(
             recorded["metrics"][HEADLINE[stage]],
             deflation(ws, wf.results)["annualised_sharpe"],
@@ -101,10 +114,8 @@ def reproduce(ws: Workspace, criteria: Criteria, version: VersionState, stage: s
         settings = {"Strategy spec": json.dumps(recorded["spec"])}
     else:
         raise Refused(f"no report to reproduce for stage '{stage}'")
-    reports = [
-        build_report(r, benchmark=benchmark(bars, r.ledger.index, costs)) for bars, r in pairs
-    ]
+    reports, sections = render_reports([(r, bars, costs) for bars, r in pairs], 0, pool)
     page = write_report(
-        reports, ws.report_dir(version.idea, version.version, stage), title, settings
+        reports, ws.report_dir(version.idea, version.version, stage), title, settings, sections
     )
     return ws.relative(page)

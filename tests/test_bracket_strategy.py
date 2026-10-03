@@ -136,12 +136,13 @@ def test_cannot_be_used_as_a_target_position_strategy(bars) -> None:
         Combine((BreakoutBracket(),)).target_position(bars)
 
 
-REAL = ohlcv_path(load_settings().data_paths.raw, MarketId("binanceusdm", "BTC"), "4h")
+RAW = load_settings().data_paths.raw  # at import: tests do not see ALGOTRADE_DATA_ROOT
+REAL = ohlcv_path(RAW, MarketId("binanceusdm", "BTC"), "4h")
 
 
 @pytest.mark.skipif(not REAL.exists(), reason="BTC 4h data not downloaded")
 def test_smoke_on_real_btc_data() -> None:
-    bars = load_market(load_settings().data_paths.raw, "binanceusdm", "BTC", "4h")
+    bars = load_market(RAW, "binanceusdm", "BTC", "4h")
     result = BreakoutBracket().simulate(bars, CostModel())
     assert len(result.trades) > 10
     assert set(result.trades["exit_reason"]) <= set(EXIT_REASONS)
