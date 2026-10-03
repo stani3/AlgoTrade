@@ -22,7 +22,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from algotrade.config import data_root_override
+from algotrade.config import data_root_override, load_dotenv
 from algotrade.research.criteria import load_criteria
 from algotrade.research.incubation import frozen_strategy, incubation_dir
 from algotrade.research.registry import Refused, find_version
@@ -30,20 +30,6 @@ from algotrade.research.split import load_full_bars
 from algotrade.research.workspace import Workspace
 
 PARITY_BARS = 1500
-
-
-def load_dotenv(path: Path) -> None:
-    """Read KEY=VALUE lines from ``.env`` into the environment without printing anything."""
-
-    import os
-
-    if not path.exists():
-        return
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def parity(ws: Workspace, frozen: dict, bars_per_symbol: int = PARITY_BARS) -> bool:

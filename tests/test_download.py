@@ -1,5 +1,7 @@
 """The downloader against a fake exchange: symbols, quote currencies, paging and resuming."""
 
+import os
+
 import pandas as pd
 import pytest
 
@@ -205,3 +207,74 @@ def test_download_named_symbols_from_the_command_line(tmp_path, monkeypatch, cap
     runpy.run_path(download_data.__file__, run_name="__main__")
     assert [(m.name, t) for m, t in calls] == [("BTCUSDC", ["4h"]), ("SOLUSDC", ["4h"])]
     assert "SOLUSDC: 4h=1" in capsys.readouterr().out
+
+
+# --- stocks, ETFs and forex ---------------------------------------------------------------
+
+
+def test_asset_classes_choose_source_and_symbols() -> None:
+    args = download_data.parse(["--asset-class", "bonds"])
+    assert args.source == "alpaca" and args.symbols.startswith("TLT,IEF")
+    args = download_data.parse(["--asset-class", "fx", "--symbols", "eurusd"])
+    assert (args.source, args.symbols) == ("dukascopy", "eurusd")
+    assert download_data.parse([]).source == "binanceusdm"
+    assert download_data.parse(["--exchange", "bybit"]).source == "bybit"
+    with pytest.raises(SystemExit):
+        download_data.parse(["--asset-class", "fx", "--source", "alpaca"])
+    with pytest.raises(SystemExit):
+        download_data.parse(["--source", "alpaca"])
+    assert download_data.split(" aapl, brk.b ,") == ["AAPL", "BRK.B"]
+
+
+def test_session_markets_download_check_and_report_failures(tmp_path, monkeypatch, capsys) -> None:
+    from algotrade.data import alpaca, dukascopy
+    from algotrade.data.files import bars_path, write_bars
+
+    settings = type("S", (), {"data_paths": type("P", (), {"raw": tmp_path})()})()
+    monkeypatch.setattr(download_data, "load_settings", lambda: settings)
+    monkeypatch.setattr(alpaca, "AlpacaClient", lambda: "client")
+    monkeypatch.setattr(dukascopy, "DukascopyClient", lambda: "client")
+    index = pd.date_range("2024-01-01", periods=40, freq="4h", tz="UTC")
+    bars = pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0},
+                        index=index)  # fmt: skip
+    bars.iloc[20:, :4] = 2.0  # a 100% jump for --check to report
+
+    def update(root, symbol, timeframes, client):
+        if symbol == "BAD":
+            raise alpaca.AlpacaError("HTTP 404 for BAD")
+        write_bars(bars, bars_path(root, "alpaca", symbol, "4h"))
+        return {"4h": len(bars)} if symbol == "TLT" else {}
+
+    monkeypatch.setattr(alpaca, "update_equity", update)
+    failed = download_data.main_sessions("alpaca", ["TLT", "BAD", "IEF"], ["4h", "1d"], True)
+    out = capsys.readouterr().out
+    assert failed == 1
+    assert "TLT: 4h=40" in out and "IEF: up to date" in out
+    assert "BAD: FAILED (AlpacaError: HTTP 404 for BAD)" in out
+    assert "check 4h jump: close-to-close moves above 25%" in out
+
+    calls = []
+    monkeypatch.setattr(dukascopy, "update_fx", lambda *args: calls.append(args[1]) or {"1h": 1})
+    assert download_data.main_sessions("dukascopy", ["EURUSD"], ["1h"], False) == 0
+    assert calls == ["EURUSD"]
+
+
+def test_session_markets_from_the_command_line(tmp_path, monkeypatch) -> None:
+    env = tmp_path / "keys.env"
+    env.write_text("ALGOTRADE_TEST_KEY=from-file\n# comment\n", encoding="utf-8")
+    seen = []
+    monkeypatch.delenv("ALGOTRADE_TEST_KEY", raising=False)
+    monkeypatch.setattr(
+        download_data, "main_sessions",
+        lambda source, symbols, timeframes, check: seen.append(
+            (source, symbols, timeframes, check, os.environ.get("ALGOTRADE_TEST_KEY"))
+        ) or 2,
+    )  # fmt: skip
+    assert download_data.run(["--asset-class", "fx", "--check", "--env-file", str(env)]) == 2
+    assert seen == [("dukascopy", ["EURUSD", "USDJPY", "GBPUSD", "AUDUSD"], ["1h", "4h", "1d"],
+                     True, "from-file")]  # fmt: skip
+    crypto = []
+    monkeypatch.setattr(download_data, "main", lambda **kwargs: crypto.append(kwargs))
+    assert download_data.run(["--symbols", "btc", "--timeframes", "1d"]) == 0
+    assert crypto == [{"exchange_id": "binanceusdm", "symbols": ["BTC"], "timeframes": ["1d"],
+                       "quote": "USDT"}]  # fmt: skip

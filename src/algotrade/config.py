@@ -47,6 +47,21 @@ def _coerce_path(value: str | Path) -> Path:
     return path.expanduser().resolve() if not path.is_absolute() else path
 
 
+def load_dotenv(path: Path) -> None:
+    """Read KEY=VALUE lines from ``.env`` into the environment without printing anything.
+
+    Variables already set win, so a shell can override the file.
+    """
+
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
 def load_settings(config_path: Path | str | None = None) -> Settings:
     """Load settings from YAML if provided, else fall back to sane defaults."""
 
